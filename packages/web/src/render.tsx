@@ -108,7 +108,15 @@ export function renderDocument(element: ReactElement, opts: DocumentOptions): st
     `<!doctype html><html lang="en"${themeAttr}>` +
     `<head><meta charset="utf-8"/>` +
     `<meta name="viewport" content="width=device-width, initial-scale=1"/>` +
-    `<title>${escapeHtml(opts.title)} · Partnera</title>` +
+    `<title>${escapeHtml(opts.title)} - Partnera</title>` +
+    `<link rel="manifest" href="/manifest.webmanifest"/>` +
+    `<link rel="icon" href="/favicon.ico"/>` +
+    `<link rel="apple-touch-icon" href="/icon-512.png"/>` +
+    `<meta name="theme-color" content="#4f46e5"/>` +
+    `<meta name="application-name" content="Partnera"/>` +
+    `<meta name="apple-mobile-web-app-title" content="Partnera"/>` +
+    `<meta name="apple-mobile-web-app-capable" content="yes"/>` +
+    `<meta name="mobile-web-app-capable" content="yes"/>` +
     `<style>${GLOBAL_CSS}</style></head>` +
     `<body>${body}</body></html>`
   );

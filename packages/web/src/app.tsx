@@ -10,6 +10,39 @@ import { renderBusiness } from "./pages/business";
 import { renderAffiliate } from "./pages/affiliate";
 import { renderAdmin } from "./pages/admin";
 import { loginPage } from "./pages/login";
+import { ICON_PNG_BASE64 } from "./brand-icon";
+
+/** The installable PWA manifest — gives the app its own window, name, and icon. */
+const MANIFEST = JSON.stringify({
+  name: "Partnera",
+  short_name: "Partnera",
+  description: "Affiliate, referral & partnership platform",
+  start_url: "/",
+  scope: "/",
+  display: "standalone",
+  background_color: "#f5f6f8",
+  theme_color: "#4f46e5",
+  icons: [
+    { src: "/icon-512.png", sizes: "192x192", type: "image/png", purpose: "any" },
+    { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+    { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+  ],
+});
+
+function staticAsset(path: string): WebResponse | null {
+  if (path === "/manifest.webmanifest") {
+    return { status: 200, headers: { "content-type": "application/manifest+json; charset=utf-8" }, body: MANIFEST };
+  }
+  if (path === "/icon-512.png" || path === "/favicon.ico" || path === "/favicon.png" || path === "/apple-touch-icon.png") {
+    return {
+      status: 200,
+      headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" },
+      body: "",
+      bodyBase64: ICON_PNG_BASE64,
+    };
+  }
+  return null;
+}
 
 export interface WebRequest {
   readonly method: string;
@@ -22,6 +55,8 @@ export interface WebResponse {
   readonly status: number;
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string;
+  /** When set, the host writes these decoded bytes instead of `body` (for images). */
+  readonly bodyBase64?: string;
 }
 
 const html = (status: number, body: string): WebResponse => ({
@@ -40,6 +75,10 @@ let requestSeq = 0;
 
 /** The single entry point: turn a request into a response over the demo world. */
 export async function handle(world: DemoWorld, req: WebRequest): Promise<WebResponse> {
+  // Public static assets (icon, manifest) — no session required.
+  const asset = staticAsset(req.path);
+  if (asset) return asset;
+
   const sessionId = req.cookies[SESSION_COOKIE];
   const session = sessionId ? world.sessionStore.get(sessionId) : undefined;
 

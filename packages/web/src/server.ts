@@ -65,7 +65,11 @@ export function startServer(local: LocalWorld, port: number): void {
         }
       }
       res.writeHead(response.status, { ...response.headers });
-      res.end(response.body);
+      if (response.bodyBase64 !== undefined) {
+        res.end(Buffer.from(response.bodyBase64, "base64"));
+      } else {
+        res.end(response.body);
+      }
     })().catch((err) => {
       res.writeHead(500, { "content-type": "text/plain" });
       res.end(`Internal error: ${String(err)}`);

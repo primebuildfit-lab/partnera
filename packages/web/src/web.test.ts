@@ -143,6 +143,35 @@ describe("delivery — workflows execute through services", () => {
   });
 });
 
+describe("delivery — PWA / desktop assets", () => {
+  it("serves the web manifest (installable)", async () => {
+    const world = await createDemoWorld();
+    const res = await handle(world, req({ path: "/manifest.webmanifest" }));
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("manifest");
+    expect(res.body).toContain('"display":"standalone"');
+    expect(res.body).toContain('"name":"Partnera"');
+  });
+
+  it("serves the icon as PNG bytes", async () => {
+    const world = await createDemoWorld();
+    const res = await handle(world, req({ path: "/favicon.ico" }));
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toBe("image/png");
+    expect(typeof res.bodyBase64).toBe("string");
+    // PNG signature "\x89PNG" base64-encodes with the "iVBORw0" prefix.
+    expect(res.bodyBase64!.startsWith("iVBORw0")).toBe(true);
+  });
+
+  it("includes the manifest + theme-color in the document head", async () => {
+    const world = await createDemoWorld();
+    const res = await handle(world, req({ path: "/login" }));
+    expect(res.body).toContain('rel="manifest"');
+    expect(res.body).toContain('name="theme-color"');
+    expect(res.body).toContain("<title>Sign in - Partnera</title>");
+  });
+});
+
 describe("delivery — permissions & accessibility", () => {
   it("denies a workflow the principal lacks permission for", async () => {
     const world = await createDemoWorld();
