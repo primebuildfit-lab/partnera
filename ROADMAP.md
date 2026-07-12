@@ -17,6 +17,12 @@ Documentation only. Understand the product completely.
 
 > Smallest thing that proves the thesis with **PrimeBuild as Tenant #1**, without over-building.
 
+> **Progress (2026-07-12):** Mega Module 3 delivered the money spine **in-process** —
+> tenancy/RBAC, offer engine + versioning, tracking + attribution, the append-only
+> commission ledger, non-custodial payouts, and fraud gating all work end-to-end against
+> real repositories (84 tests). Remaining for Phase 1 exit: activate live persistence +
+> delivery + auth + a commerce adapter and the MVP surfaces (Mega Module 4).
+
 **In scope**
 1. **Tenancy & identity core** — users, businesses (tenant isolation), memberships, RBAC.
 2. **Offer Engine (MVP)** — a subset of blocks covering the most common offers (percentage, fixed, per-product, coupon/link attribution, basic tiers). Offer versioning + dry-run simulation.

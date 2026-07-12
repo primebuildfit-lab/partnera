@@ -42,6 +42,42 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/application:
+    dependencies:
+      '@partnera/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@partnera/commission-engine':
+        specifier: workspace:*
+        version: link:../commission-engine
+      '@partnera/core':
+        specifier: workspace:*
+        version: link:../core
+      '@partnera/extension-engine':
+        specifier: workspace:*
+        version: link:../extension-engine
+      '@partnera/fraud-engine':
+        specifier: workspace:*
+        version: link:../fraud-engine
+      '@partnera/notification-engine':
+        specifier: workspace:*
+        version: link:../notification-engine
+      '@partnera/offer-engine':
+        specifier: workspace:*
+        version: link:../offer-engine
+      '@partnera/payment-engine':
+        specifier: workspace:*
+        version: link:../payment-engine
+      '@partnera/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@partnera/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@partnera/tracking-engine':
+        specifier: workspace:*
+        version: link:../tracking-engine
+
   packages/auth:
     dependencies:
       '@partnera/core':
@@ -68,6 +104,15 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/http-api:
+    dependencies:
+      '@partnera/application':
+        specifier: workspace:*
+        version: link:../application
+      '@partnera/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/notification-engine:
     dependencies:
       '@partnera/core':
@@ -79,6 +124,45 @@ importers:
       '@partnera/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/payment-engine:
+    dependencies:
+      '@partnera/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/persistence:
+    dependencies:
+      '@partnera/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@partnera/commission-engine':
+        specifier: workspace:*
+        version: link:../commission-engine
+      '@partnera/core':
+        specifier: workspace:*
+        version: link:../core
+      '@partnera/extension-engine':
+        specifier: workspace:*
+        version: link:../extension-engine
+      '@partnera/fraud-engine':
+        specifier: workspace:*
+        version: link:../fraud-engine
+      '@partnera/notification-engine':
+        specifier: workspace:*
+        version: link:../notification-engine
+      '@partnera/offer-engine':
+        specifier: workspace:*
+        version: link:../offer-engine
+      '@partnera/payment-engine':
+        specifier: workspace:*
+        version: link:../payment-engine
+      '@partnera/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@partnera/tracking-engine':
+        specifier: workspace:*
+        version: link:../tracking-engine
 
   packages/platform:
     dependencies:

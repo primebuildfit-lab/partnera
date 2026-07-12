@@ -1,0 +1,276 @@
+# PROJECT_CONTEXT — Partnera
+
+> **Read this first.** This is the single authoritative context document for Partnera.
+> It supersedes chat history as the source of truth. Future AI sessions and developers
+> should read this before reading anything else. When this file disagrees with an old
+> chat or a stale doc, **this file wins** — or the discrepancy is a bug to fix here.
+>
+> Maintenance rule: update this file whenever maturity, status, decisions, or "next work"
+> change. Keep it dense. Do not let it drift.
+> **Last verified:** 2026-07-12 (Mega Module 3 — Persistence & Money Spine; 16 packages, 84 tests green).
+
+---
+
+## 1. PROJECT OVERVIEW
+
+**Purpose.** Partnera is a standalone, multi-tenant SaaS platform that lets any business
+build, run, and scale its own **affiliate, referral, and B2B partnership programs** —
+**configured, not coded**, and not locked to any one commerce platform. The core bet: an
+*offer* is a configurable object, not a code path. If the offer engine + commission ledger
+are right, the rest composes around them.
+
+**Relationship to PrimeBuild.** PrimeBuild is **Tenant #1 only** — a validation case, never a
+design constraint. Unrelated to the Eventra/PrimeBuild Shopify work; do not touch those repos
+for Partnera.
+
+- **Current maturity:** Early-mid. Design complete + foundation + **persistence & money spine** built. The platform is now persistent (behind a repository seam); no live DB/app runtime yet.
+- **Current phase:** Phase 0 (Design) ✅. Mega Module 2 (Foundation) ✅. **Mega Module 3 (Persistence & Money Spine) ✅ built, awaiting review.** Overlaps Phase 1 (money spine proven in-process).
+- **Current status:** Verified-green 16-package monorepo. The money spine runs end-to-end against real repositories (in-memory relational store); Postgres/Prisma + NestJS are documented deploy steps behind the same ports.
+- **Current health:** Green. Typecheck + lint + build (16/16) + 84 tests all pass. Main non-code risks: not backed up (no git remote); live persistence/delivery not yet activated (contracts + canonical schema exist).
+
+**Executive summary.** On top of the 12 framework-agnostic domain packages, Mega Module 3 added
+four layers **without changing any engine**: `persistence` (repository ports over an
+invariant-enforcing relational store + canonical `prisma/schema.prisma` & `sql/0001_init.sql`),
+a new `payment-engine` (append-only payouts, empty rails), `application` (permission-aware
+use-case services), and `http-api` (dependency-free delivery). The append-only commission
+ledger is the centre: attribute → convert → commission → approve → payout → paid works
+end-to-end with fraud gating, clawbacks, idempotency, optimistic concurrency, and tenant
+isolation — all tested. The next step is delivery activation (live Postgres + NestJS host +
+auth + Shopify adapter) to prove one real PrimeBuild conversion → payout on infrastructure.
+
+---
+
+## 2. ARCHITECTURE
+
+**High-level.** Multi-tenant SaaS. Three presentation surfaces over a set of modular,
+event-driven domain engines sitting on an Identity & Tenancy core.
+
+- **Surfaces:** **Admin Console** (Partnera operators), **Business Dashboard** (tenants), **Affiliate Portal** (affiliates/partners). Surfaces are not engines.
+- **Engines (logical):** Offer · Tracking · Commission · Payment · Fraud · Notification · Extension · Analytics · Integration · Marketplace.
+- **Reference conversion path:** touch (link/coupon/session) → normalized order via Integration adapter → attribution resolved → `conversion.recorded` → Fraud scores (allow/hold) → Offer evaluates → Commission ledger entry (pending) → approve → Payment payout → notify + analytics. Every step emits domain events; money steps are **ledger appends, never edits**.
+
+**Foundational engineering principle:** the engines are **pure-domain TypeScript** with **zero**
+dependency on HTTP/NestJS/Next/Prisma. Frameworks are *delivery layers* added later. The domain
+must survive for years; coupling it to a framework now is the exact debt the brief forbids.
+
+**Package dependency graph:** `core` depends on nothing. Every other domain package depends only
+on `core`. Engines do **not** depend on each other (they compose via events/contracts at the
+future delivery layer). `ui` is isolated from the domain. Graph is acyclic by design.
+
+### Current modules (`packages/*`, all shipped in the foundation)
+| Package | Role |
+|---|---|
+| `@partnera/core` | Kernel: `Money` (bigint minor units, bps rounding, largest-remainder `allocate`), `Result`, branded ids, tenancy (`RequestContext`, `assertSameTenant`), `Clock`, `EventBus`, `DomainError` hierarchy, currency table, cursor pagination. |
+| `@partnera/auth` | Identity/business/membership shapes + **data-driven RBAC**: permission catalog, 10 system-role templates, wildcard grants (`offers.*`, `*`), deny-by-default `PermissionEngine`. **No login/token impl** (delivery-layer, later). |
+| `@partnera/offer-engine` | Six block sections (Scope/Condition/Calculation/Reward/Schedule/Limit); deterministic `OfferEvaluator` → explainable `CommissionInstruction` (`reasonPath`); validators; starter templates. |
+| `@partnera/tracking-engine` | Touch/order/refund records; `DefaultAttributionResolver` (last/first touch, validity window, precedence tie-break). |
+| `@partnera/commission-engine` | Money spine: append-only `LedgerEvent` store contract, lifecycle state machine, `foldCommission`, `projectBalances` (pending/available/paid/reversed), `assertAppendable` guard. |
+| `@partnera/fraud-engine` | Weighted signal scoring (0–100), band→action, platform hard-floor signals, review cases. |
+| `@partnera/notification-engine` | Channels (email/in_app/push live; sms/webhook future), template render, preference gating, backoff → dead-letter. |
+| `@partnera/extension-engine` | Manifest with allow-listed scopes/hooks, least-privilege validation, approval lifecycle, semver engine-compat. |
+| `@partnera/analytics` | Metric events, KPI (count/sum/unique), ordered funnel with conversion rates. |
+| `@partnera/platform` | Feature flags (plan/tenant/rollout, stable hashing), immutable audit entries, config framework, nav registries for all three surfaces (each module gated by a permission key). |
+| `@partnera/payment-engine` | **(M3)** Append-only payout event stream + state machine; `PayoutRail` abstraction with only `UnconfiguredPayoutRail` (non-custodial, no provider). |
+| `@partnera/persistence` | **(M3)** Repository ports + in-memory relational store (append-only, unique/idempotency, optimistic concurrency, transactions, tenant scoping); repos for identity/offer/tracking/ledger/payout/fraud/notification/extension/config/audit/idempotency; canonical `prisma/schema.prisma` + `sql/0001_init.sql`. |
+| `@partnera/application` | **(M3)** Permission-aware use-case services (organizations, offers, tracking/money-spine, ledger, payments, fraud, notifications, configuration). Tenant + actor from `RequestContext`; deny-by-default; audited. |
+| `@partnera/http-api` | **(M3)** Dependency-free HTTP delivery adapter (`Router` + `buildApiRouter`) over the application services; `DomainError` → HTTP status. NestJS host = deploy step. |
+| `@partnera/testing` | `SequentialIdGenerator`, `FixedClock`, `usd`/`eur`, in-memory repo/bus. |
+| `@partnera/ui` | Theme-aware tokens (light/dark) + React components (Button, Badge, Tag, Progress, Spinner, forms, surfaces, data, overlays). Inline-style based. Isolated from domain. |
+
+### Repository structure
+```
+D:\Partnera
+├─ docs/                      # 00–22 product+eng design, plus THIS file
+├─ packages/                  # 12 domain/ui packages (see table)
+├─ package.json               # workspace root; scripts (verify = typecheck+lint+build+test)
+├─ pnpm-workspace.yaml
+├─ turbo.json                 # task graph
+├─ tsconfig.base.json         # strict compiler options
+├─ tsconfig.json              # solution file (project references)
+├─ eslint.config.mjs          # ESLint 9 flat
+├─ vitest.config.ts           # aliases @partnera/* → package source
+├─ .github/workflows/ci.yml   # runs pnpm verify on push/PR
+├─ BUILD_STATUS.md  DECISIONS.md  ROADMAP.md  README.md  TESTING.md  CONTRIBUTING.md
+```
+
+### Important dependencies / stack
+TypeScript (strict) · pnpm 9 workspaces · Turborepo · `tsc -b` project references ·
+Vitest · ESLint 9 flat + typescript-eslint · Prettier · `moduleResolution: Bundler` / `module: ESNext`.
+**Target (contracts only, not wired):** PostgreSQL + Prisma (persistence); NestJS (engines) + Next.js/React (apps).
+**Machine note:** install scripts blocked by default — `esbuild` is allow-listed via `package.json > pnpm.onlyBuiltDependencies`; run `npm approve-scripts` if Prisma/esbuild ever misbehave. pnpm is user-global (corepack needs admin here).
+
+---
+
+## 3. BUSINESS RULES
+
+### Locked rules (invariants — never regress; a change here is a breaking decision)
+1. **Platform-first.** No feature designed for one tenant. PrimeBuild is just Tenant #1.
+2. **Configuration over code.** New commercial behavior = new data (offer blocks, roles, flags), not new branches.
+3. **Money is append-only.** Never mutate a balance; append a ledger event; balances are always derived; corrections are compensating events.
+4. **Tenant isolation.** Every operational record is tenant-scoped. Cross-tenant access only via audited operator paths or consented partnerships.
+5. **Idempotency + at-most-once** on all money-affecting events (orders, conversions, payouts) and disbursements.
+6. **Explainability.** Every commission records offer version + block path + attribution basis; offers are versioned.
+7. **No arbitrary code execution** for extensions — declarative-first; sandboxed exception only; least-privilege scopes; validated outputs; network-wide kill-switch.
+8. **Deterministic engines.** Inject `Clock`; brand ids; return `Result` for expected failures; `throw` only on broken invariants.
+9. **Explicit currency.** No implicit FX; money is exact integer minor units, never floats.
+10. **Separation of duties** available on money paths (approve ≠ execute); platform fraud floors tenants cannot disable.
+
+### Configurable rules (per tenant/plan — data, interpreted by engines)
+- Offer composition (all six block sections), stacking priority, per-conversion/period/budget caps, clawback windows.
+- Attribution model (last/first touch), validity window, coupon/link/session precedence.
+- Commission approval policy (auto after maturation / manual / conditional).
+- Fraud weights, band thresholds, action mapping (within platform hard floors).
+- RBAC: system roles are templates; tenants define custom roles.
+- Feature flags / entitlements per plan; notification channel + category preferences.
+
+### Temporary assumptions (provisional defaults — revisit before/at build)
+- **Non-custodial / business-funded payouts** (D-050) until counsel says otherwise. Gates most of legal/payments.
+- Default attribution: **last-touch, 30-day, precedence `coupon > link > session`** (D-051).
+- Default stacking: **winner-takes-highest-value** (D-052).
+- Separation-of-duties recommended default on money paths (D-053).
+- Desktop-first Admin/Business; responsive Affiliate Portal (D-055).
+- Platform config defaults: min payout `2000` minor units; default clawback `30` days.
+
+---
+
+## 4. TECHNICAL DECISIONS
+
+### Architectural (accepted)
+- **D-001/002** Standalone multi-tenant platform; platform-first over PrimeBuild-first.
+- **D-003** Configuration over code. **D-004** Modular event-driven engines behind contracts.
+- **D-005** Isolation invariant, centrally enforced. **D-006** Append-only auditable money ledger; derived balances.
+- **D-007** Platform-agnostic commerce via adapters (Shopify is one adapter). **D-008** No arbitrary code exec for extensions.
+- **D-009** Explainable + versioned offers/commissions. **D-010** Idempotency on money events.
+- **D-200** TS + pnpm + Turborepo. **D-201** Framework-agnostic domain core. **D-202** `tsc -b` / Vitest / ESLint 9 / Prettier.
+- **D-203** `moduleResolution: Bundler`. **D-204** Target Postgres+Prisma / NestJS+Next (contracts this phase). **D-205** Data-driven RBAC with permission catalog.
+
+### Implementation conventions
+- Ids are **branded types** (`UserId`, `OfferId`…), never bare strings. Money is `Money` (bigint), serialize via `MoneyJSON`.
+- Expected failures → `Result<T, DomainError>`; broken invariants → `throw` (`invariant`, `InvariantViolation`).
+- Time via `Clock`; never `Date.now()` in engine logic. `import type` for type-only imports (lint-enforced).
+- Tests live beside source as `*.test.ts`, excluded from build output; Vitest resolves `@partnera/*` to **source** (no prior build needed).
+- Engines depend only on `@partnera/core`, never on each other. TS strict; no `any` without justification.
+
+### Rejected / explicitly-not-done ideas
+- ❌ A rigid, fixed-list affiliate app; ❌ Shopify-only tool; ❌ a PrimeBuild internal system.
+- ❌ Untrusted/arbitrary extension code in the core runtime.
+- ❌ Hardcoded per-tenant commission math; ❌ hardcoded role checks (RBAC is data).
+- ❌ Coupling the domain to a framework now (frameworks are later delivery layers).
+- ❌ Mutable balances / editing money records (append-only only).
+
+---
+
+## 5. IMPLEMENTATION STATUS
+
+- **Completed modules:** Phase 0 design (docs 00–23); **Mega Module 2 — Platform Foundation** (12 packages, 47 tests); **Mega Module 3 — Persistence & Money Spine** (16 packages, 84 tests: persistence layer, Payment Engine, application/API, HTTP delivery, canonical DB model).
+- **Current module:** none in progress — awaiting review + go-ahead.
+- **Remaining modules (order):** **Mega Module 4 — Delivery Activation & Pilot Surfaces** (live Postgres/Prisma + NestJS host + auth provider + Shopify adapter + minimal surfaces) → Phases 2–5 (see §9 and ROADMAP.md).
+
+### Current blockers
+- **Human go-ahead required** to start the next module (design-only guardrail is explicit; do not start without it).
+- **D-106 custodial-vs-non-custodial** is counsel-gated and blocks the real payments build (non-custodial assumed meanwhile).
+- **No git remote + `gh` not installed** on this machine → foundation is not backed up off-disk.
+
+### Known technical debt / gaps (intentional at this stage)
+- No DB/Prisma schema, no API/HTTP/NestJS, no apps, no real auth provider, no commerce adapter, no payments impl.
+- Offer engine `level` and `bonus` calcs are modeled but return an explicit error (need aggregate state → specialized evaluators later). Period/budget limits likewise deferred.
+- Balances are derived by full fold — needs snapshots/materialized views at scale (invariant preserved; optimization is build-phase).
+- Doc drift: `docs/22-engineering.md` cites "D-100…D-107" as *decided* for the stack, but in `DECISIONS.md` those IDs are the **open/deferred** ones; the foundation decisions are **D-200–D-205**. Cosmetic; fix when convenient.
+- No data import/migration design, i18n/l10n, a11y standard, or SLA/DR spec yet (scheduled for later phases).
+
+---
+
+## 6. CURRENT KNOWLEDGE
+
+**Implementation summary.** Pure-domain logic only, deterministic and mock-free. The money spine
+works in-memory end-to-end: an attributed conversion → `OfferEvaluator` → `CommissionInstruction`
+→ ledger events → `foldCommission`/`projectBalances`, with `assertAppendable` rejecting illegal
+transitions and second-creates. RBAC, fraud scoring, attribution, feature flags, funnels, and the
+extension approval lifecycle are all implemented and tested.
+
+**Known limitations.** Everything requiring I/O is a contract, not an implementation (stores, buses,
+auth, rails, adapters). Advanced offer calcs (level/bonus), multi-currency FX, and server-side
+tracking are designed-for but unbuilt.
+
+**Known bugs.** None known in the shipped code (47/47 tests green). Only the cosmetic doc-drift in §5.
+
+**Strengths.** Correctness-first money model (bigint, append-only, explainable); clean acyclic
+package graph; strict TS + full CI gate; determinism throughout; design internally reconciled
+(risk register 21 closes contradictions A1–A4).
+
+**Risks (ranked).**
+- 🔴 Cross-tenant leakage / money-path tampering / untrusted extensions — invariants exist but real enforcement lives in the unbuilt persistence+delivery layer.
+- 🔴 PrimeBuild gravity (pressure to contaminate the platform).
+- 🔴 Custodial money movement → money-transmission regulation; privacy controller/processor ambiguity.
+- 🟠 Chargeback-after-payout loss; two-sided cold start; no data-import design; balance-derivation cost at scale.
+- 🟠 Foundation not backed up (no remote).
+
+---
+
+## 7. AUTHORITATIVE DOCUMENTS
+
+Read in this order. Stop when you have what you need.
+
+| Order | Document | Why it exists | Read when |
+|---|---|---|---|
+| 1 | **docs/PROJECT_CONTEXT.md** (this file) | Single source of truth; minimizes context needed. | Always first. |
+| 2 | **BUILD_STATUS.md** | Where the build actually is right now. | Every session start. |
+| 3 | **DECISIONS.md** | ADR log — every accepted/provisional/open decision + rationale. | Before any decision or design change. |
+| 4 | **ROADMAP.md** | Phase 0→5 plan; what's authorized. | Before starting/scoping work. |
+| 5 | **docs/22-engineering.md** | Stack, monorepo layout, package graph, conventions. | Before touching code. |
+| 6 | **docs/02-architecture.md** | Logical architecture, engines, event flow, tenancy. | For system-level work. |
+| 7 | **docs/04/05/06** (offer, tracking, commission) | The money spine in depth. | When working the core path. |
+| 8 | **docs/16-roles-permissions.md**, **docs/18-security.md** | Identity/RBAC + security invariants. | Auth/security/isolation work. |
+| 9 | **docs/03-data-model.md** | Conceptual entities (not a schema). | Persistence/data modeling. |
+| 10 | **docs/07/08/09/10/11** (payments, fraud, partnerships, extensions, marketplace) | Domain deep-dives. | When touching that domain. |
+| 11 | **docs/12/13/14/15** (surfaces + user flows) | UX/surface specs and journeys. | App/UI work. |
+| 12 | **docs/17/19** (monetization, legal) | Business model + compliance obligations. | Pricing/payments/launch. |
+| 13 | **docs/21-risks.md** | Risk register + self-review. | Risk/QA reviews. |
+| 14 | **docs/20-glossary.md** | Canonical terminology (glossary wins ties). | When a term is ambiguous. |
+| — | **TESTING.md / CONTRIBUTING.md** | Test strategy; golden-rule guardrails. | Before writing tests / PRs. |
+
+---
+
+## 8. CURRENT AI CONTEXT (minimum viable context for a new session)
+
+A new AI needs only this to be productive:
+
+1. **What Partnera is:** configurable, multi-tenant, platform-agnostic affiliate/referral/partnership SaaS. Offer-as-configuration is the core bet. PrimeBuild = Tenant #1 only.
+2. **Where it is:** design done; a pure-domain TS monorepo (12 packages) built and green; **no DB/API/app yet**. Awaiting go-ahead for the next module. Do **not** start a new module without explicit approval.
+3. **Non-negotiable invariants:** append-only money + derived balances; tenant isolation; idempotency/at-most-once; explainable+versioned commissions; no arbitrary extension code; deterministic engines (inject `Clock`, brand ids, `Result` for expected failures); config over code.
+4. **Code shape:** `core` = kernel; each engine depends only on `core`, never on siblings; `ui` isolated. Money is `Money` (bigint). Tests beside source; Vitest resolves to source.
+5. **How to work:** `pnpm install && pnpm verify` (typecheck→lint→build→test) is the gate. Record decisions in `DECISIONS.md`; update `BUILD_STATUS.md` and this file when state changes. Machine: use `npm approve-scripts` if Prisma/esbuild break.
+6. **Then read:** BUILD_STATUS → DECISIONS → ROADMAP → docs/22 → the specific domain doc for the task. Don't read all files.
+
+---
+
+## 9. NEXT WORK
+
+**Mega Module 3 (Persistence & Money Spine) is done.** ✅ Delivered: the persistence
+layer behind repository ports (append-only, idempotent, concurrency-safe, tenant-scoped),
+a new Payment Engine, permission-aware application services, a dependency-free HTTP
+surface, and the canonical Postgres model (`prisma/schema.prisma` + `sql/0001_init.sql`).
+The money spine runs end-to-end in-process with 84 green tests. **No engine interface changed.**
+
+**Build next: Mega Module 4 — Delivery Activation & Pilot Surfaces.**
+
+- **What:** (a) a **Prisma-backed store** implementing the existing repository ports over live Postgres (activate `schema.prisma` + `sql/0001_init.sql`; resolve D-102b physical tenancy); (b) a **NestJS/Express host** over `@partnera/http-api`; (c) an **auth provider** (D-104) that builds `RequestContext` from verified sessions; (d) the **first Shopify commerce adapter** feeding `NormalizedOrder`/`Refund`; (e) **minimal Business Dashboard + Affiliate Portal** surfaces.
+- **Why:** The money spine is proven in-process; activating it on real infrastructure makes the guarantees production-real and proves one PrimeBuild conversion → payout on live rails.
+- **Prerequisites:** explicit human go-ahead; confirm D-102b, D-104 provisionally; keep D-050 non-custodial (rails empty until counsel clears D-106).
+- **Acceptance criteria:**
+  - `pnpm verify` stays green; the Prisma store passes the **same** repository/contract tests as the in-memory store (same ports).
+  - Tenant-isolation, append-only, idempotency, and concurrency remain enforced at the DB boundary (triggers in `sql/0001_init.sql` active).
+  - No engine gains a dependency on Prisma/NestJS/HTTP.
+  - One real PrimeBuild conversion → commission → approval → payout, fully audited, on live infra.
+  - `DECISIONS.md`, `BUILD_STATUS.md`, `CHANGELOG.md`, and this file updated.
+
+---
+
+## 10. CHANGE HISTORY (milestones only)
+
+- **2026-07-11 — Phase 0 design complete.** 26-doc set (00–22) authored and self-reviewed; contradictions A1–A4 reconciled; design declared internally consistent.
+- **2026-07-11 — Mega Module 2 (Platform Foundation) built & committed (`58da889`).** 12-package pure-domain TS monorepo; verified green (typecheck, lint, build 12/12, 47 tests). Decisions D-200–D-205 recorded. Push pending (no remote).
+- **2026-07-12 — PROJECT_CONTEXT.md created** as the authoritative first-read context document.
+- **2026-07-12 — Mega Module 3 (Persistence & Money Spine) built.** Added `persistence`, `payment-engine`, `application`, `http-api` (16 packages, 84 tests, verified green). Money spine end-to-end; canonical DB model authored. Decisions D-206–D-214. No engine interface changed. See [CHANGELOG.md](../CHANGELOG.md), [ARCHITECTURE.md](../ARCHITECTURE.md), [23-persistence.md](23-persistence.md), [TECHNICAL_HANDOFF.md](../TECHNICAL_HANDOFF.md).
+
+*(Full history: git log + DECISIONS.md. Do not duplicate it here.)*

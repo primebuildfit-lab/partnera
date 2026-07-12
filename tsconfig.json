@@ -7,11 +7,15 @@
     { "path": "packages/offer-engine" },
     { "path": "packages/tracking-engine" },
     { "path": "packages/commission-engine" },
+    { "path": "packages/payment-engine" },
     { "path": "packages/fraud-engine" },
     { "path": "packages/notification-engine" },
     { "path": "packages/extension-engine" },
     { "path": "packages/analytics" },
     { "path": "packages/platform" },
+    { "path": "packages/persistence" },
+    { "path": "packages/application" },
+    { "path": "packages/http-api" },
     { "path": "packages/testing" },
     { "path": "packages/ui" }
   ]

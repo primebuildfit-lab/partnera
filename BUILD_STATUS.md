@@ -6,22 +6,29 @@ Single source of truth for **where Partnera is right now**.
 
 ## Current phase
 
-**Mega Module 2 — Platform Foundation: COMPLETE (awaiting review).**
+**Mega Module 3 — Persistence & Money Spine: COMPLETE (awaiting review).**
 
-The technical foundation exists as a verified TypeScript monorepo of pure-domain
-engine packages plus a design system. No database, API, app runtime, or commerce
-integration is wired yet — by design (those are later modules).
+The pure-domain foundation is now a **persistent platform**. A repository layer
+behind clean ports (over an invariant-enforcing relational store), a new Payment
+Engine, a permission-aware application/API layer, and a dependency-free HTTP
+delivery surface make the money spine work end-to-end: attribute → convert →
+commission (append-only ledger) → approve → payout → paid, with fraud gating,
+clawbacks, idempotency, optimistic concurrency, and tenant isolation — all tested.
 
-**Last updated:** 2026-07-11
+The canonical production database is authored as `packages/persistence/prisma/
+schema.prisma` + `sql/0001_init.sql`; wiring a live Postgres/Prisma and a NestJS
+host is the remaining, mechanical deploy step (behind the same ports).
+
+**Last updated:** 2026-07-12
 
 ## Verification (this module)
 
 | Gate | Result |
 |---|---|
-| Typecheck (`tsc -b`, 12 packages) | ✅ pass |
+| Typecheck (`tsc -b`, 16 packages) | ✅ pass |
 | Lint (ESLint 9 flat) | ✅ pass |
-| Build (`turbo run build`) | ✅ 12/12 packages |
-| Tests (Vitest) | ✅ 47 passed / 10 files |
+| Build (`turbo run build`) | ✅ 16/16 packages |
+| Tests (Vitest) | ✅ 84 passed / 15 files (47 → 84) |
 
 ## What exists now
 
@@ -48,6 +55,17 @@ Prettier, Vitest, GitHub Actions CI (`pnpm verify`).
 - `@partnera/analytics` — KPIs, funnels, reports/dashboards contracts.
 - `@partnera/platform` — feature flags/entitlements, immutable audit, config
   framework, navigation registries (admin/business/affiliate).
+- `@partnera/payment-engine` — **(new)** append-only payout event stream, state
+  machine, and a provider-less `PayoutRail` abstraction (non-custodial).
+- `@partnera/persistence` — **(new)** repository ports + in-memory relational
+  store enforcing append-only, unique/idempotency, optimistic concurrency,
+  atomic transactions, and tenant scoping; canonical `prisma/schema.prisma` +
+  `sql/0001_init.sql`.
+- `@partnera/application` — **(new)** permission-aware use-case services
+  (organizations, offers, tracking/money-spine, ledger, payments, fraud,
+  notifications, configuration) — the API core.
+- `@partnera/http-api` — **(new)** dependency-free HTTP delivery adapter over the
+  application services; NestJS host is the documented deploy wrapper.
 - `@partnera/testing` — deterministic ids, fixed clock, money helpers, in-memory
   repo/bus.
 - `@partnera/ui` — theme-aware design tokens (light/dark) + reusable React
@@ -59,12 +77,16 @@ Prettier, Vitest, GitHub Actions CI (`pnpm verify`).
 
 ## What does NOT exist yet (intentionally)
 
-- ❌ Database / Prisma schema / migrations (persistence is a later module).
-- ❌ API / HTTP layer / NestJS wiring.
+- ❌ Live database — the canonical model exists (`prisma/schema.prisma` +
+  `sql/0001_init.sql`); generating the client + running migrations is the deploy
+  step (D-207/D-101). The tested runtime uses the in-memory relational store.
+- ❌ NestJS/Express host — the HTTP surface exists (`@partnera/http-api`); the
+  framework wrapper is the thin remaining delivery step (D-210).
 - ❌ The three apps (Admin/Business/Affiliate) — design system is ready for them.
-- ❌ Auth provider (login, token issuance, MFA/SSO).
-- ❌ Commerce integrations / Shopify adapter.
-- ❌ Payments/billing implementation.
+- ❌ Auth provider (login, token issuance, MFA/SSO) — RBAC + principal
+  resolution exist; the provider is D-104.
+- ❌ Commerce integrations / Shopify adapter (tracking ingests normalized orders).
+- ❌ Real payment providers — the payout abstraction exists; rails are empty (D-105).
 
 ## Newly decided (see [DECISIONS.md](DECISIONS.md))
 
@@ -74,9 +96,11 @@ NestJS+Next targets · D-205 data-driven RBAC.
 
 ## Next milestone
 
-Review this foundation, then begin the next module (recommended:
-**Persistence & Delivery** — Prisma schema + repository implementations of the
-store interfaces + first NestJS wiring, behind the existing engine contracts).
+Review this module, then **Mega Module 4 — Delivery Activation & Pilot Surfaces**:
+provide the Prisma-backed store (activate the schema), a NestJS/Express host over
+`@partnera/http-api`, an auth provider (D-104), the first Shopify commerce
+adapter, and the minimal Business/Affiliate surfaces — proving one real
+PrimeBuild conversion → payout on live infrastructure.
 
 ## Change log
 
@@ -84,3 +108,4 @@ store interfaces + first NestJS wiring, behind the existing engine contracts).
 |---|---|
 | 2026-07-11 | Phase 0 documentation set created (design only). |
 | 2026-07-11 | Mega Module 2 — Platform Foundation built & verified (12 packages, 47 tests). |
+| 2026-07-12 | Mega Module 3 — Persistence & Money Spine built & verified (16 packages, 84 tests): persistence layer, Payment Engine, application/API, HTTP delivery, canonical DB model. |

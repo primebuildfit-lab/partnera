@@ -111,6 +111,46 @@ System roles are templates; tenants define custom roles; engines call `policy.re
 
 ---
 
+## Accepted (Mega Module 3 — Persistence & Money Spine)
+
+### D-206 ✅ Persistence via repository ports behind a storage-driver seam
+Engines and application code depend on repository **ports**; a small in-memory relational store is the tested reference implementation. A Postgres+Prisma driver implements the same ports with **no engine or application change**.
+**Why:** Makes the isolation/append-only/idempotency guarantees real at the data-access layer while keeping the domain framework-agnostic (D-201). Proves the money spine end-to-end today; the DB swap is mechanical.
+
+### D-207 ✅ Canonical DB model authored as artifacts, not wired into the build
+`packages/persistence/prisma/schema.prisma` + `sql/0001_init.sql` are the production Postgres model. Client generation + `migrate deploy` are the deploy step; they are **not** part of `tsc -b`/CI.
+**Why:** Keeps the monorepo green and offline-safe on a machine that blocks install scripts; avoids coupling the build to Prisma engine binaries. Activation is a hosting concern (relates D-101).
+
+### D-208 ✅ New Payment Engine as an append-only event stream; rails are empty abstractions
+`@partnera/payment-engine` models payouts as an immutable event stream (mirrors the ledger); state is derived. Only an `UnconfiguredPayoutRail` ships — **no** provider.
+**Why:** Uniform, auditable money spine (payouts + commissions on the same discipline). Non-custodial (D-050); real rails are D-105.
+
+### D-209 ✅ Application layer = permission-aware use-case services
+`@partnera/application` services resolve the principal from the `RequestContext`, enforce deny-by-default permissions, scope every access to the context tenant (**never** client input), and audit sensitive actions.
+**Why:** Part 8/9 — one place where authorization, tenancy, idempotency, and audit are enforced; engines stay pure.
+
+### D-210 ✅ Delivery via a dependency-free HTTP router; NestJS is the documented wrapper
+`@partnera/http-api` maps routes to services and translates `DomainError` → HTTP status. NestJS/Express is the thin production host adapter (delivery seam), not built this module.
+**Why:** Demonstrates clean Domain/Persistence/Application/Delivery separation without dragging a web framework (and its install scripts) into the green gate. D-204 target stack is unchanged.
+
+### D-211 ✅ Append-only + idempotency + concurrency enforced at the store boundary
+Append-only collections reject UPDATE/DELETE (and DB triggers do the same in SQL); unique constraints back idempotency; a per-row `version` guards optimistic concurrency; transactions snapshot/rollback atomically.
+**Why:** The invariants must hold structurally, not by convention (D-006, D-010, D-005).
+
+### D-212 ✅ Balances stay derived; snapshot table is a rebuildable cache
+`balance_snapshots` exists for performance but is never the source of truth — always reconstructable by folding `ledger_events`.
+**Why:** Preserves the append-only/derived-balance invariant while leaving room for scale (risks E1).
+
+### D-213 ✅ Money-spine winner selection = winner-takes-highest-value, tie-break stacking priority
+The conversion pipeline evaluates all active offers and emits one commission for the highest-value instruction (implements provisional D-052).
+**Why:** Safe default; avoids accidental stacked payouts. Configurable stacking is a later-phase concern.
+
+### D-214 🟡 Ingestion/pipeline permissions reuse the existing catalog (assumption)
+Tracking pipeline operations map to `links.manage` / `coupons.manage`; refund clawbacks to `commissions.adjust`. Part 5's "Cancelled"/"Clawback" map to the domain's `rejected`/`reversed` — no engine change.
+**Why:** Respects the "don't modify engine interfaces" constraint. A dedicated `tracking.ingest` permission + ingestion service-accounts is deferred to the delivery/auth module.
+
+---
+
 ## Open (deferred to later modules)
 
 | ID | Open decision | Blocks | Notes |
