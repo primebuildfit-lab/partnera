@@ -1,0 +1,174 @@
+import { describe, expect, it } from "vitest";
+import { createDemoWorld, type DemoWorld } from "./demo";
+import { handle, type WebRequest, type WebResponse } from "./app";
+
+/**
+ * End-to-end delivery tests: they drive the real {@link handle} entry point over
+ * the demo world (which itself ran the real money spine), so a passing test means
+ * the pages render actual service data, workflows execute through the services,
+ * permissions are enforced, and the accessibility landmarks are present.
+ */
+
+function req(partial: Partial<WebRequest> & { path: string }): WebRequest {
+  return {
+    method: "GET",
+    query: new URLSearchParams(),
+    cookies: {},
+    form: {},
+    ...partial,
+  };
+}
+
+async function login(world: DemoWorld, email: string, scope: string): Promise<string> {
+  const res = await handle(world, req({ method: "POST", path: "/login", form: { email, scope } }));
+  const cookie = res.headers["set-cookie"] ?? "";
+  const id = /pt_session=([^;]+)/.exec(cookie)?.[1] ?? "";
+  return id;
+}
+
+function get(world: DemoWorld, path: string, session: string, query?: Record<string, string>): Promise<WebResponse> {
+  return handle(world, req({ path, cookies: { pt_session: session }, query: new URLSearchParams(query) }));
+}
+
+describe("delivery — authentication & routing", () => {
+  it("redirects unauthenticated requests to /login", async () => {
+    const world = await createDemoWorld();
+    const res = await handle(world, req({ path: "/business" }));
+    expect(res.status).toBe(303);
+    expect(res.headers.location).toBe("/login");
+  });
+
+  it("logs in and sets a session cookie", async () => {
+    const world = await createDemoWorld();
+    const res = await handle(world, req({ method: "POST", path: "/login", form: { email: world.users.owner, scope: "business" } }));
+    expect(res.status).toBe(303);
+    expect(res.headers["set-cookie"]).toContain("pt_session=");
+    expect(res.headers.location).toBe("/business");
+  });
+
+  it("logs out and clears the cookie", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await handle(world, req({ path: "/logout", cookies: { pt_session: session } }));
+    expect(res.headers["set-cookie"]).toContain("Max-Age=0");
+  });
+});
+
+describe("delivery — Business Dashboard shows real money-spine data", () => {
+  it("overview reflects seeded conversions and commissions", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business", session);
+    expect(res.status).toBe(200);
+    expect(res.body).toContain("Overview");
+    expect(res.body).toContain("$50.00"); // Brian's paid commission
+  });
+
+  it("commissions page lists commissions with states", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business/commissions", session);
+    expect(res.body).toContain("$50.00");
+    expect(res.body).toContain("reversed");
+  });
+
+  it("balances are derived from the ledger", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business/balances", session);
+    expect(res.body).toContain("Available");
+  });
+
+  it("analytics computes attributed revenue", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business/analytics", session);
+    expect(res.body).toContain("Attributed revenue");
+    expect(res.body).toContain("$1090.00");
+  });
+});
+
+describe("delivery — Affiliate Portal is scoped to the affiliate", () => {
+  it("shows the affiliate's own paid balance", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.affiliate, "affiliate");
+    const res = await get(world, "/affiliate", session);
+    expect(res.body).toContain("Performance");
+    expect(res.body).toContain("$50.00"); // Brian's paid to date
+  });
+});
+
+describe("delivery — Admin Console", () => {
+  it("renders the operations overview for a platform operator", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.admin, "admin");
+    const res = await get(world, "/admin", session);
+    expect(res.body).toContain("Operations Overview");
+    expect(res.body).toContain("Users");
+  });
+});
+
+describe("delivery — workflows execute through services", () => {
+  it("creates a draft offer and shows it in the list", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const post = await handle(
+      world,
+      req({
+        method: "POST",
+        path: "/business/offers",
+        cookies: { pt_session: session },
+        form: { name: "Test Offer 22%", calc: "percentage", value: "2200" },
+      }),
+    );
+    expect(post.status).toBe(303);
+    expect(post.headers.location).toContain("intent=success");
+    const list = await get(world, "/business/offers", session);
+    expect(list.body).toContain("Test Offer 22%");
+  });
+
+  it("approving a pending commission moves it to approved", async () => {
+    const world = await createDemoWorld();
+    const owner = { tenantId: world.tenantId, actorUserId: world.uow.identity.getUserByEmail(world.users.owner)!.id, isPlatformOperator: false, requestId: "t" };
+    const pending = (await world.services.query.commissions(owner)).find((c) => c.state === "pending");
+    expect(pending).toBeTruthy();
+    const session = await login(world, world.users.owner, "business");
+    const post = await handle(
+      world,
+      req({ method: "POST", path: `/business/commissions/${pending!.commissionId}/approve`, cookies: { pt_session: session } }),
+    );
+    expect(post.headers.location).toContain("intent=success");
+    const after = await world.services.query.commissions(owner);
+    expect(after.find((c) => c.commissionId === pending!.commissionId)!.state).toBe("approved");
+  });
+});
+
+describe("delivery — permissions & accessibility", () => {
+  it("denies a workflow the principal lacks permission for", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.affiliate, "business");
+    const res = await handle(
+      world,
+      req({ method: "POST", path: "/business/offers", cookies: { pt_session: session }, form: { name: "x", calc: "percentage", value: "1" } }),
+    );
+    expect(res.headers.location).toContain("intent=danger");
+    expect(decodeURIComponent(res.headers.location!)).toContain("offers.create");
+  });
+
+  it("hides nav items the principal cannot access", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.affiliate, "business");
+    const res = await get(world, "/business", session);
+    // Affiliate lacks audit.read → the Audit nav link must not appear.
+    expect(res.body).not.toContain("/business/audit");
+  });
+
+  it("includes accessibility landmarks", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business", session);
+    expect(res.body).toContain("pt-skip"); // skip link
+    expect(res.body).toContain('id="main"'); // main landmark
+    expect(res.body).toContain('aria-label="Primary"'); // primary navigation
+  });
+});

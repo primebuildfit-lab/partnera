@@ -1,0 +1,45 @@
+{
+  "name": "@partnera/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "clean": "tsc -b --clean",
+    "bundle": "esbuild src/server.ts --bundle --platform=node --format=esm --jsx=automatic --outfile=dist/server.mjs --external:react --external:react-dom",
+    "serve": "pnpm bundle && node dist/server.mjs"
+  },
+  "dependencies": {
+    "@partnera/core": "workspace:*",
+    "@partnera/auth": "workspace:*",
+    "@partnera/offer-engine": "workspace:*",
+    "@partnera/tracking-engine": "workspace:*",
+    "@partnera/commission-engine": "workspace:*",
+    "@partnera/payment-engine": "workspace:*",
+    "@partnera/fraud-engine": "workspace:*",
+    "@partnera/notification-engine": "workspace:*",
+    "@partnera/analytics": "workspace:*",
+    "@partnera/platform": "workspace:*",
+    "@partnera/persistence": "workspace:*",
+    "@partnera/application": "workspace:*",
+    "@partnera/ui": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "esbuild": "^0.21.5"
+  }
+}

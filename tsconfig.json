@@ -16,6 +16,7 @@
     { "path": "packages/persistence" },
     { "path": "packages/application" },
     { "path": "packages/http-api" },
+    { "path": "packages/web" },
     { "path": "packages/testing" },
     { "path": "packages/ui" }
   ]

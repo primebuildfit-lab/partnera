@@ -197,6 +197,64 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
 
+  packages/web:
+    dependencies:
+      '@partnera/analytics':
+        specifier: workspace:*
+        version: link:../analytics
+      '@partnera/application':
+        specifier: workspace:*
+        version: link:../application
+      '@partnera/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@partnera/commission-engine':
+        specifier: workspace:*
+        version: link:../commission-engine
+      '@partnera/core':
+        specifier: workspace:*
+        version: link:../core
+      '@partnera/fraud-engine':
+        specifier: workspace:*
+        version: link:../fraud-engine
+      '@partnera/notification-engine':
+        specifier: workspace:*
+        version: link:../notification-engine
+      '@partnera/offer-engine':
+        specifier: workspace:*
+        version: link:../offer-engine
+      '@partnera/payment-engine':
+        specifier: workspace:*
+        version: link:../payment-engine
+      '@partnera/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@partnera/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@partnera/tracking-engine':
+        specifier: workspace:*
+        version: link:../tracking-engine
+      '@partnera/ui':
+        specifier: workspace:*
+        version: link:../ui
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
+      esbuild:
+        specifier: ^0.21.5
+        version: 0.21.5
+
 packages:
 
   '@esbuild/aix-ppc64@0.21.5':

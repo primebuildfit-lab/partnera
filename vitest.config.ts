@@ -35,6 +35,7 @@ export default defineConfig({
       "@partnera/persistence": pkg("persistence"),
       "@partnera/application": pkg("application"),
       "@partnera/http-api": pkg("http-api"),
+      "@partnera/web": pkg("web"),
       "@partnera/testing": pkg("testing"),
     },
   },
