@@ -189,6 +189,25 @@ export class Collection<Row> {
     return this.data.size;
   }
 
+  /** Export every row with its version, for durable snapshotting. */
+  exportRows(): { row: Row; version: number }[] {
+    return [...this.data.values()].map((v) => ({ row: v.row, version: v.version }));
+  }
+
+  /**
+   * Load rows from a snapshot, replacing current contents and rebuilding indexes.
+   * Bypasses the append-only guard (restoring a snapshot is not a mutation).
+   */
+  loadRows(entries: readonly { row: Row; version: number }[]): void {
+    this.data = new Map();
+    for (const map of this.uniqueMaps.values()) map.clear();
+    for (const entry of entries) {
+      const pk = this.pkOf(entry.row);
+      this.data.set(pk, { row: entry.row, version: entry.version });
+      this.indexRow(pk, entry.row);
+    }
+  }
+
   /** @internal Snapshot for transaction rollback. */
   snapshot(): CollectionSnapshot {
     const dataCopy = new Map(this.data);
@@ -216,6 +235,25 @@ export class RelationalStore {
     const collection = new Collection<Row>(name, options);
     this.collections.push(collection as Collection<unknown>);
     return collection;
+  }
+
+  /**
+   * Export the whole store as a plain object keyed by collection name. Combined
+   * with a Date-aware (de)serializer (see snapshot.ts), this is the durable local
+   * persistence for the desktop/dev runtime — no external database required.
+   */
+  exportAll(): Record<string, { row: unknown; version: number }[]> {
+    const out: Record<string, { row: unknown; version: number }[]> = {};
+    for (const collection of this.collections) out[collection.name] = collection.exportRows();
+    return out;
+  }
+
+  /** Restore a previously exported snapshot into the (already-defined) collections. */
+  importAll(data: Record<string, { row: unknown; version: number }[]>): void {
+    for (const collection of this.collections) {
+      const entries = data[collection.name];
+      if (entries) collection.loadRows(entries as { row: unknown; version: number }[]);
+    }
   }
 
   /**
