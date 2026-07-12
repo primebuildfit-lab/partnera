@@ -6,6 +6,7 @@ import { LedgerService } from "./ledger";
 import { OfferService } from "./offer";
 import { OrganizationService } from "./organization";
 import { PaymentService } from "./payment";
+import { QueryService } from "./query";
 import { TrackingService } from "./tracking";
 
 export * from "./organization";
@@ -15,6 +16,7 @@ export * from "./ledger";
 export * from "./payment";
 export * from "./fraud";
 export * from "./admin";
+export * from "./query";
 
 /** The full set of application services, constructed over one set of dependencies. */
 export interface Services {
@@ -27,6 +29,7 @@ export interface Services {
   readonly notifications: NotificationService;
   readonly configuration: ConfigurationService;
   readonly audit: AuditService;
+  readonly query: QueryService;
 }
 
 /** Build every application service from shared dependencies (and an optional payout rail). */
@@ -41,5 +44,6 @@ export function createServices(deps: AppDeps, rail?: PayoutRail): Services {
     notifications: new NotificationService(deps),
     configuration: new ConfigurationService(deps),
     audit: new AuditService(deps),
+    query: new QueryService(deps),
   };
 }

@@ -118,4 +118,34 @@ export class LedgerRepository implements LedgerStore {
     const events = await this.readByAffiliate(tenantId, affiliateId);
     return projectBalances(events);
   }
+
+  /** All commissions for a tenant, each folded from its event stream. */
+  async listCommissions(tenantId: TenantId): Promise<CommissionRecord[]> {
+    return this.foldGrouped(await this.readByTenant(tenantId));
+  }
+
+  /** All commissions for one affiliate within a tenant. */
+  async listCommissionsForAffiliate(
+    tenantId: TenantId,
+    affiliateId: AffiliateId,
+  ): Promise<CommissionRecord[]> {
+    return this.foldGrouped(await this.readByAffiliate(tenantId, affiliateId));
+  }
+
+  /** Derived per-currency balances aggregated across the whole tenant. */
+  async tenantBalances(tenantId: TenantId): Promise<Balance[]> {
+    return projectBalances(await this.readByTenant(tenantId));
+  }
+
+  private foldGrouped(events: readonly LedgerEvent[]): CommissionRecord[] {
+    const byCommission = new Map<string, LedgerEvent[]>();
+    for (const e of events) {
+      const list = byCommission.get(e.commissionId) ?? [];
+      list.push(e);
+      byCommission.set(e.commissionId, list);
+    }
+    return [...byCommission.values()]
+      .map((group) => foldCommission(group))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
 }

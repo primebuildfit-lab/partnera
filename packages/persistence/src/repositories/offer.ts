@@ -155,6 +155,17 @@ export class OfferRepository {
     return updated;
   }
 
+  /** Set an offer's lifecycle status (e.g. archive). Optimistic-concurrency guarded. */
+  setStatus(tenantId: TenantId, offerId: OfferId, status: OfferStatus, now: Date): OfferRow {
+    const current = this.offers.getVersioned(offerId);
+    if (!current || current.row.tenantId !== tenantId) {
+      throw new NotFoundError("Offer not found", { offerId });
+    }
+    const updated: OfferRow = { ...current.row, status, updatedAt: now };
+    this.offers.replace(updated, current.version);
+    return updated;
+  }
+
   /**
    * Resolve the currently-active offer definition for evaluation. Version bodies
    * are stored as immutable `draft` snapshots; the active-version read model

@@ -150,6 +150,40 @@ export class TrackingRepository {
     return this.conversions.findByUnique("tenant_order", `${tenantId}:${orderId}`);
   }
 
+  // --- Tenant-scoped listings (presentation/reporting) ---
+
+  listConversions(tenantId: TenantId): Conversion[] {
+    return this.conversions.find((c) => c.tenantId === tenantId);
+  }
+
+  listOrders(tenantId: TenantId): NormalizedOrder[] {
+    return this.orders.find((o) => o.tenantId === tenantId);
+  }
+
+  listLinks(tenantId: TenantId): TrackingLinkRow[] {
+    return this.links.find((l) => l.tenantId === tenantId);
+  }
+
+  listCoupons(tenantId: TenantId): CouponRow[] {
+    return this.coupons.find((c) => c.tenantId === tenantId);
+  }
+
+  listRefundsForTenant(tenantId: TenantId): RefundRow[] {
+    return this.refunds.find((r) => r.tenantId === tenantId);
+  }
+
+  listConversionsForAffiliate(tenantId: TenantId, affiliateId: AffiliateId): Conversion[] {
+    return this.conversions.find((c) => c.tenantId === tenantId && c.affiliateId === affiliateId);
+  }
+
+  listLinksForAffiliate(tenantId: TenantId, affiliateId: AffiliateId): TrackingLinkRow[] {
+    return this.links.find((l) => l.tenantId === tenantId && l.affiliateId === affiliateId);
+  }
+
+  listCouponsForAffiliate(tenantId: TenantId, affiliateId: AffiliateId): CouponRow[] {
+    return this.coupons.find((c) => c.tenantId === tenantId && c.affiliateId === affiliateId);
+  }
+
   /** Mark a conversion reversed (refund/clawback). Idempotent. */
   markConversionReversed(tenantId: TenantId, conversionId: ConversionId): Conversion | null {
     const versioned = this.conversions.getVersioned(conversionId);

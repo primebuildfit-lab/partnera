@@ -104,6 +104,37 @@ export class OfferService extends ServiceBase {
     return row;
   }
 
+  /** Archive an offer (soft lifecycle end; versions remain immutable). */
+  async archive(ctx: RequestContext, offerId: OfferId): Promise<OfferRow> {
+    this.require(ctx, "offers.update");
+    const row = this.uow.offers.setStatus(ctx.tenantId, offerId, "archived", this.clock.now());
+    await this.audit(ctx, "offers.archive", "offer", offerId, {});
+    return row;
+  }
+
+  /** Duplicate an offer's latest version into a new draft offer. */
+  async duplicate(ctx: RequestContext, offerId: OfferId): Promise<OfferRow> {
+    this.require(ctx, "offers.create");
+    const source = this.uow.offers.getOffer(ctx.tenantId, offerId);
+    if (!source) throw new NotFoundError("Offer not found", { offerId });
+    const version = this.uow.offers.getVersion(ctx.tenantId, offerId, source.latestVersion);
+    if (!version) throw new NotFoundError("Offer version not found", { offerId });
+    const body = version.definition;
+    const created = this.createOffer(ctx, {
+      programId: source.programId,
+      name: `${source.name} (copy)`,
+      scope: body.scope,
+      conditions: body.conditions,
+      calculation: body.calculation,
+      reward: body.reward,
+      schedule: body.schedule,
+      limits: body.limits,
+      stackingPriority: source.stackingPriority,
+    });
+    await this.audit(ctx, "offers.duplicate", "offer", created.id, { from: offerId });
+    return created;
+  }
+
   listOffers(ctx: RequestContext): OfferRow[] {
     this.require(ctx, "offers.read");
     return this.uow.offers.listOffers(ctx.tenantId);

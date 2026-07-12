@@ -75,6 +75,13 @@ export class IdentityRepository {
     return this.memberships.find((m) => m.userId === userId);
   }
 
+  listUsers(): User[] {
+    return this.users.values();
+  }
+  listOrganizations(): Organization[] {
+    return this.organizations.values();
+  }
+
   // --- Roles ---
   createRole(role: Role): void {
     this.roles.insert(role);
