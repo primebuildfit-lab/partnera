@@ -1,0 +1,65 @@
+/* Partnera design tokens — light/dark theme-aware CSS variables.
+   Apps import this once: `import "@partnera/ui/tokens.css"`.
+   Dark mode follows the OS by default and can be forced via
+   `:root[data-theme="dark"]` / `[data-theme="light"]`. */
+
+:root {
+  --pt-color-primary: #4f46e5;
+  --pt-color-primary-text: #ffffff;
+  --pt-color-surface: #ffffff;
+  --pt-color-surface-muted: #f5f6f8;
+  --pt-color-border: #e2e4e9;
+  --pt-color-text: #1a1c21;
+  --pt-color-text-muted: #6b7280;
+  --pt-color-success: #15803d;
+  --pt-color-warning: #b45309;
+  --pt-color-danger: #b91c1c;
+  --pt-color-info: #1d4ed8;
+
+  --pt-font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --pt-font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pt-color-primary: #818cf8;
+    --pt-color-primary-text: #0b0c0f;
+    --pt-color-surface: #16181d;
+    --pt-color-surface-muted: #1f222a;
+    --pt-color-border: #2c303a;
+    --pt-color-text: #e8eaed;
+    --pt-color-text-muted: #9aa0ac;
+    --pt-color-success: #4ade80;
+    --pt-color-warning: #fbbf24;
+    --pt-color-danger: #f87171;
+    --pt-color-info: #60a5fa;
+  }
+}
+
+:root[data-theme="light"] {
+  --pt-color-primary: #4f46e5;
+  --pt-color-primary-text: #ffffff;
+  --pt-color-surface: #ffffff;
+  --pt-color-surface-muted: #f5f6f8;
+  --pt-color-border: #e2e4e9;
+  --pt-color-text: #1a1c21;
+  --pt-color-text-muted: #6b7280;
+  --pt-color-success: #15803d;
+  --pt-color-warning: #b45309;
+  --pt-color-danger: #b91c1c;
+  --pt-color-info: #1d4ed8;
+}
+
+:root[data-theme="dark"] {
+  --pt-color-primary: #818cf8;
+  --pt-color-primary-text: #0b0c0f;
+  --pt-color-surface: #16181d;
+  --pt-color-surface-muted: #1f222a;
+  --pt-color-border: #2c303a;
+  --pt-color-text: #e8eaed;
+  --pt-color-text-muted: #9aa0ac;
+  --pt-color-success: #4ade80;
+  --pt-color-warning: #fbbf24;
+  --pt-color-danger: #f87171;
+  --pt-color-info: #60a5fa;
+}

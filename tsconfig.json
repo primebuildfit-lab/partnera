@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/auth" },
+    { "path": "packages/offer-engine" },
+    { "path": "packages/tracking-engine" },
+    { "path": "packages/commission-engine" },
+    { "path": "packages/fraud-engine" },
+    { "path": "packages/notification-engine" },
+    { "path": "packages/extension-engine" },
+    { "path": "packages/analytics" },
+    { "path": "packages/platform" },
+    { "path": "packages/testing" },
+    { "path": "packages/ui" }
+  ]
+}
