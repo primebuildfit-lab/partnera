@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "dist", "node_modules"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../auth" },
+    { "path": "../offer-engine" },
+    { "path": "../tracking-engine" },
+    { "path": "../commission-engine" },
+    { "path": "../payment-engine" },
+    { "path": "../fraud-engine" },
+    { "path": "../notification-engine" },
+    { "path": "../extension-engine" },
+    { "path": "../platform" },
+    { "path": "../persistence" }
+  ]
+}
