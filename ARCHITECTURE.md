@@ -9,8 +9,12 @@ persistence/money-spine layer see [docs/23-persistence.md](docs/23-persistence.m
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
+│ Presentation  @partnera/web           three SSR React apps over the    │
+│                                       services (Business/Affiliate/     │
+│                                       Admin), reusing @partnera/ui      │
+├─────────────────────────────────────────────────────────────────────┤
 │ Delivery      @partnera/http-api      transport-agnostic HTTP router  │
-│                                       (NestJS/Express host = deploy)   │
+│                                       (NestJS/Next host = deploy)      │
 ├─────────────────────────────────────────────────────────────────────┤
 │ Application   @partnera/application   permission-aware use-cases;      │
 │                                       the API core (authz, tenancy,    │
@@ -82,3 +86,13 @@ See [docs/23-persistence.md](docs/23-persistence.md).
 | Commerce | `NormalizedOrder` ingestion | Shopify adapter (D-114) |
 | Payout rails | `PayoutRail` | Stripe/PayPal/… (D-105) |
 | Eventing | `EventBus` | durable/queue bus (D-103) |
+| UI host | `@partnera/web` SSR + node host | NestJS/Next + client hydration (D-210/D-215) |
+
+## Presentation (Mega Module 4)
+
+`@partnera/web` renders three server-side React apps (reusing `@partnera/ui`) that
+consume **only** the application services via a permission-gated `QueryService`.
+The tenant/actor come from the session, never request input; navigation and
+controls are permission-gated; workflows POST to the services. Rendered with
+`react-dom/server` (no bundler/hydration) — accessible, progressive-enhancement.
+See [docs/24-delivery-ux.md](docs/24-delivery-ux.md).

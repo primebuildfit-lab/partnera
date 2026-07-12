@@ -17,11 +17,13 @@ Documentation only. Understand the product completely.
 
 > Smallest thing that proves the thesis with **PrimeBuild as Tenant #1**, without over-building.
 
-> **Progress (2026-07-12):** Mega Module 3 delivered the money spine **in-process** —
-> tenancy/RBAC, offer engine + versioning, tracking + attribution, the append-only
-> commission ledger, non-custodial payouts, and fraud gating all work end-to-end against
-> real repositories (84 tests). Remaining for Phase 1 exit: activate live persistence +
-> delivery + auth + a commerce adapter and the MVP surfaces (Mega Module 4).
+> **Progress (2026-07-12):** MM3 delivered the money spine **in-process** (tenancy/RBAC,
+> offers + versioning, tracking + attribution, append-only ledger, non-custodial payouts,
+> fraud gating) against real repositories. **MM4** added the MVP **surfaces** — Business
+> Dashboard, Affiliate Portal, and Admin Console (`@partnera/web`, SSR over the services)
+> with real workflows and ledger-derived analytics (98 tests). Remaining for Phase 1 exit:
+> activate live persistence + a production host + a real auth provider + one commerce
+> adapter (Mega Module 5).
 
 **In scope**
 1. **Tenancy & identity core** — users, businesses (tenant isolation), memberships, RBAC.

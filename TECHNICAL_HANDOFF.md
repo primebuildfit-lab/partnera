@@ -9,7 +9,9 @@ build-level companion.
 ```bash
 pnpm install
 pnpm verify        # typecheck → lint → build → test  (the gate; must stay green)
-pnpm test          # 84 tests / 15 files
+pnpm test          # 98 tests / 16 files
+pnpm --filter @partnera/web serve   # bundles + starts the apps at http://localhost:4000
+#   sign in: owner@primebuild.test · brian@primebuild.test (affiliate) · admin@partnera.test
 ```
 
 Machine note: install scripts are blocked by default; `esbuild` is allow-listed
@@ -22,11 +24,16 @@ Kernel/engines (unchanged this module): `core`, `auth`, `offer-engine`,
 `tracking-engine`, `commission-engine`, `fraud-engine`, `notification-engine`,
 `extension-engine`, `analytics`, `platform`, `testing`, `ui`.
 
-New this module:
+Delivery/persistence/domain (MM3):
 - `payment-engine` — append-only payout events, state machine, `PayoutRail`.
 - `persistence` — repository ports + relational store + `prisma/` + `sql/`.
-- `application` — permission-aware services (`createServices(deps, rail?)`).
+- `application` — permission-aware services (`createServices(deps, rail?)`), incl. `QueryService` (reads).
 - `http-api` — `buildApiRouter(services)` + `Router` + error mapping.
+
+Presentation (MM4):
+- `web` — three SSR React apps over the services. Entry points: `handle(world, req)`
+  (`src/app.tsx`), `createDemoWorld()` (`src/demo.ts`), `AppShell` (`src/shell.tsx`),
+  auth prep (`src/auth.ts`). Rendered via `react-dom/server`; `pnpm --filter @partnera/web serve`.
 
 ## How to wire a running system (deploy checklist)
 
@@ -66,8 +73,9 @@ code · no engine depends on persistence/application/delivery.
 D-102b (physical tenancy), D-104 (auth provider), D-105/D-106 (payment rails /
 custodial stance — counsel-gated), D-101 (hosting). See [DECISIONS.md](DECISIONS.md).
 
-## Recommended next: Mega Module 4 — Delivery Activation & Pilot Surfaces
+## Recommended next: Mega Module 5 — Live Infrastructure & Pilot
 
-Prisma-backed store + NestJS host + auth provider + first Shopify adapter +
-minimal Business/Affiliate surfaces → prove one real PrimeBuild conversion →
-payout on live infrastructure.
+Prisma-backed store (same ports/tests) on live Postgres + NestJS/Next production
+host wrapping `@partnera/web` + real auth provider + first Shopify adapter +
+telemetry → prove one real PrimeBuild conversion → payout through the UI on live
+infrastructure.

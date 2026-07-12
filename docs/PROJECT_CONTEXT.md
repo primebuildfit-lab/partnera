@@ -7,7 +7,7 @@
 >
 > Maintenance rule: update this file whenever maturity, status, decisions, or "next work"
 > change. Keep it dense. Do not let it drift.
-> **Last verified:** 2026-07-12 (Mega Module 3 — Persistence & Money Spine; 16 packages, 84 tests green).
+> **Last verified:** 2026-07-12 (Mega Module 4 — Delivery & First UX; 17 packages, 98 tests green).
 
 ---
 
@@ -23,20 +23,21 @@ are right, the rest composes around them.
 design constraint. Unrelated to the Eventra/PrimeBuild Shopify work; do not touch those repos
 for Partnera.
 
-- **Current maturity:** Early-mid. Design complete + foundation + **persistence & money spine** built. The platform is now persistent (behind a repository seam); no live DB/app runtime yet.
-- **Current phase:** Phase 0 (Design) ✅. Mega Module 2 (Foundation) ✅. **Mega Module 3 (Persistence & Money Spine) ✅ built, awaiting review.** Overlaps Phase 1 (money spine proven in-process).
-- **Current status:** Verified-green 16-package monorepo. The money spine runs end-to-end against real repositories (in-memory relational store); Postgres/Prisma + NestJS are documented deploy steps behind the same ports.
-- **Current health:** Green. Typecheck + lint + build (16/16) + 84 tests all pass. Main non-code risks: not backed up (no git remote); live persistence/delivery not yet activated (contracts + canonical schema exist).
+- **Current maturity:** Mid. Design + foundation + persistence/money-spine + **a usable UI** built. Persistent and navigable behind a repository seam; no live DB/auth provider yet.
+- **Current phase:** Phase 0 ✅ · MM2 Foundation ✅ · MM3 Persistence & Money Spine ✅ · **MM4 Delivery & First UX ✅ built, awaiting review.** Substantial Phase 1 surface coverage.
+- **Current status:** Verified-green 17-package monorepo. Three server-rendered apps (Business/Affiliate/Admin) run over the real services; the money spine and all dashboards use real data. Live Postgres/Prisma + NestJS host + auth provider remain documented activation steps.
+- **Current health:** Green. Typecheck + lint + build (17/17) + 98 tests all pass. Main non-code risks: not backed up (no git remote); live persistence/auth/host not yet activated (seams + canonical schema + demo host exist).
 
-**Executive summary.** On top of the 12 framework-agnostic domain packages, Mega Module 3 added
-four layers **without changing any engine**: `persistence` (repository ports over an
-invariant-enforcing relational store + canonical `prisma/schema.prisma` & `sql/0001_init.sql`),
-a new `payment-engine` (append-only payouts, empty rails), `application` (permission-aware
-use-case services), and `http-api` (dependency-free delivery). The append-only commission
-ledger is the centre: attribute → convert → commission → approve → payout → paid works
-end-to-end with fraud gating, clawbacks, idempotency, optimistic concurrency, and tenant
-isolation — all tested. The next step is delivery activation (live Postgres + NestJS host +
-auth + Shopify adapter) to prove one real PrimeBuild conversion → payout on infrastructure.
+**Executive summary.** On the 12 framework-agnostic domain packages, MM3 added persistence,
+a new `payment-engine`, permission-aware `application` services, and an `http-api` seam
+(money spine end-to-end, all invariants enforced). **MM4** added `@partnera/web`: three
+server-rendered React apps (reusing `@partnera/ui`) over those services — Business Dashboard,
+Affiliate Portal, and Admin Console — with a responsive/accessible shell, real workflows
+(create/activate/duplicate/archive offer, approve/reject commission, review fraud), analytics
+computed from the ledger, and auth preparation (session/permission/tenant context + provider
+seam; no provider connected). A seeded demo world runs the real money spine so every number is
+real, not faked. **No engine interface changed.** Next: live infrastructure (Postgres + NestJS
+host + auth provider + Shopify adapter) to prove one real PrimeBuild conversion → payout on the UI.
 
 ---
 
@@ -74,6 +75,7 @@ future delivery layer). `ui` is isolated from the domain. Graph is acyclic by de
 | `@partnera/persistence` | **(M3)** Repository ports + in-memory relational store (append-only, unique/idempotency, optimistic concurrency, transactions, tenant scoping); repos for identity/offer/tracking/ledger/payout/fraud/notification/extension/config/audit/idempotency; canonical `prisma/schema.prisma` + `sql/0001_init.sql`. |
 | `@partnera/application` | **(M3)** Permission-aware use-case services (organizations, offers, tracking/money-spine, ledger, payments, fraud, notifications, configuration). Tenant + actor from `RequestContext`; deny-by-default; audited. |
 | `@partnera/http-api` | **(M3)** Dependency-free HTTP delivery adapter (`Router` + `buildApiRouter`) over the application services; `DomainError` → HTTP status. NestJS host = deploy step. |
+| `@partnera/web` | **(M4)** Three SSR React apps over the services (Business/Affiliate/Admin) reusing `@partnera/ui`: responsive/accessible shell, workflows, analytics, auth prep (`WebSession`/guard/`DevAuthProvider` seam), node HTTP host + real-data demo world. Rendered via `react-dom/server` (no bundler/hydration); `esbuild` bundles the dev server. |
 | `@partnera/testing` | `SequentialIdGenerator`, `FixedClock`, `usd`/`eur`, in-memory repo/bus. |
 | `@partnera/ui` | Theme-aware tokens (light/dark) + React components (Button, Badge, Tag, Progress, Spinner, forms, surfaces, data, overlays). Inline-style based. Isolated from domain. |
 
@@ -162,9 +164,9 @@ Vitest · ESLint 9 flat + typescript-eslint · Prettier · `moduleResolution: Bu
 
 ## 5. IMPLEMENTATION STATUS
 
-- **Completed modules:** Phase 0 design (docs 00–23); **Mega Module 2 — Platform Foundation** (12 packages, 47 tests); **Mega Module 3 — Persistence & Money Spine** (16 packages, 84 tests: persistence layer, Payment Engine, application/API, HTTP delivery, canonical DB model).
+- **Completed modules:** Phase 0 design (docs 00–24); MM2 Foundation (12 pkgs, 47 tests); MM3 Persistence & Money Spine (16 pkgs, 84 tests); **MM4 Delivery & First UX** (17 pkgs, 98 tests: `@partnera/web` — Business/Affiliate/Admin apps, workflows, analytics, auth prep, demo world; `QueryService` added to `application`).
 - **Current module:** none in progress — awaiting review + go-ahead.
-- **Remaining modules (order):** **Mega Module 4 — Delivery Activation & Pilot Surfaces** (live Postgres/Prisma + NestJS host + auth provider + Shopify adapter + minimal surfaces) → Phases 2–5 (see §9 and ROADMAP.md).
+- **Remaining modules (order):** **Mega Module 5 — Live Infrastructure & Pilot** (Prisma-backed store on live Postgres + NestJS/Next host + auth provider + Shopify adapter + client enhancement) → Phases 2–5 (see §9 and ROADMAP.md).
 
 ### Current blockers
 - **Human go-ahead required** to start the next module (design-only guardrail is explicit; do not start without it).
@@ -246,22 +248,23 @@ A new AI needs only this to be productive:
 
 ## 9. NEXT WORK
 
-**Mega Module 3 (Persistence & Money Spine) is done.** ✅ Delivered: the persistence
-layer behind repository ports (append-only, idempotent, concurrency-safe, tenant-scoped),
-a new Payment Engine, permission-aware application services, a dependency-free HTTP
-surface, and the canonical Postgres model (`prisma/schema.prisma` + `sql/0001_init.sql`).
-The money spine runs end-to-end in-process with 84 green tests. **No engine interface changed.**
+**Mega Module 4 (Delivery & First UX) is done.** ✅ Delivered `@partnera/web`: three
+server-rendered React apps over the existing services (Business Dashboard, Affiliate Portal,
+Admin Console), a responsive/accessible shell, real workflows, ledger-derived analytics, auth
+preparation (session/permission/tenant context + provider seam, no provider connected), and a
+seeded demo world that runs the real money spine. `QueryService` added to `application` for
+permission-gated reads. 98 green tests. **No engine interface changed.** Run: `pnpm --filter @partnera/web serve`.
 
-**Build next: Mega Module 4 — Delivery Activation & Pilot Surfaces.**
+**Build next: Mega Module 5 — Live Infrastructure & Pilot.**
 
-- **What:** (a) a **Prisma-backed store** implementing the existing repository ports over live Postgres (activate `schema.prisma` + `sql/0001_init.sql`; resolve D-102b physical tenancy); (b) a **NestJS/Express host** over `@partnera/http-api`; (c) an **auth provider** (D-104) that builds `RequestContext` from verified sessions; (d) the **first Shopify commerce adapter** feeding `NormalizedOrder`/`Refund`; (e) **minimal Business Dashboard + Affiliate Portal** surfaces.
-- **Why:** The money spine is proven in-process; activating it on real infrastructure makes the guarantees production-real and proves one PrimeBuild conversion → payout on live rails.
+- **What:** (a) a **Prisma-backed store** implementing the existing repository ports over live Postgres (activate `schema.prisma` + `sql/0001_init.sql`; resolve D-102b); (b) a **NestJS/Next production host** wrapping `@partnera/web`/`@partnera/http-api` (+ optional client enhancement/hydration); (c) a real **auth provider** (D-104) issuing sessions that build `RequestContext`; (d) the **first Shopify commerce adapter** feeding `NormalizedOrder`/`Refund`; (e) telemetry/health probes.
+- **Why:** The product is usable in-process; activating it on real infrastructure proves one PrimeBuild conversion → payout end-to-end through the UI on live rails.
 - **Prerequisites:** explicit human go-ahead; confirm D-102b, D-104 provisionally; keep D-050 non-custodial (rails empty until counsel clears D-106).
 - **Acceptance criteria:**
   - `pnpm verify` stays green; the Prisma store passes the **same** repository/contract tests as the in-memory store (same ports).
-  - Tenant-isolation, append-only, idempotency, and concurrency remain enforced at the DB boundary (triggers in `sql/0001_init.sql` active).
-  - No engine gains a dependency on Prisma/NestJS/HTTP.
-  - One real PrimeBuild conversion → commission → approval → payout, fully audited, on live infra.
+  - Isolation/append-only/idempotency/concurrency enforced at the DB boundary (triggers active).
+  - No engine gains a dependency on Prisma/NestJS/HTTP; the UI keeps consuming only the services.
+  - One real PrimeBuild conversion → commission → approval → payout via the UI, fully audited.
   - `DECISIONS.md`, `BUILD_STATUS.md`, `CHANGELOG.md`, and this file updated.
 
 ---
@@ -272,5 +275,6 @@ The money spine runs end-to-end in-process with 84 green tests. **No engine inte
 - **2026-07-11 — Mega Module 2 (Platform Foundation) built & committed (`58da889`).** 12-package pure-domain TS monorepo; verified green (typecheck, lint, build 12/12, 47 tests). Decisions D-200–D-205 recorded. Push pending (no remote).
 - **2026-07-12 — PROJECT_CONTEXT.md created** as the authoritative first-read context document.
 - **2026-07-12 — Mega Module 3 (Persistence & Money Spine) built.** Added `persistence`, `payment-engine`, `application`, `http-api` (16 packages, 84 tests, verified green). Money spine end-to-end; canonical DB model authored. Decisions D-206–D-214. No engine interface changed. See [CHANGELOG.md](../CHANGELOG.md), [ARCHITECTURE.md](../ARCHITECTURE.md), [23-persistence.md](23-persistence.md), [TECHNICAL_HANDOFF.md](../TECHNICAL_HANDOFF.md).
+- **2026-07-12 — Mega Module 4 (Delivery & First UX) built.** Added `@partnera/web` (17 packages, 98 tests, verified green): three SSR React apps over the services, workflows, analytics, auth prep, demo world; `QueryService` added to `application`. Decisions D-215–D-218. No engine interface changed. See [24-delivery-ux.md](24-delivery-ux.md).
 
 *(Full history: git log + DECISIONS.md. Do not duplicate it here.)*

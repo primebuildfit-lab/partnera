@@ -151,6 +151,26 @@ Tracking pipeline operations map to `links.manage` / `coupons.manage`; refund cl
 
 ---
 
+## Accepted (Mega Module 4 — Delivery Activation & First UX)
+
+### D-215 ✅ Presentation is server-rendered React reusing @partnera/ui; no bundler/hydration
+Pages are React components rendered to static HTML via `react-dom/server` (`renderToStaticMarkup`). Multi-page, progressive-enhancement, works without JS. `esbuild` bundles the node dev server for local runs.
+**Why:** Stays green and offline (react is already installed; no `next build`, no install scripts, verified by tsc+Vitest), reuses the design system (no duplicated UI), and is accessible by default. Production host target (NestJS/Next) is unchanged (D-204/D-210) — this fills the seam, not the host.
+
+### D-216 ✅ New `@partnera/web` delivery package; thin presentation over the services
+Three apps (Business Dashboard, Affiliate Portal, Admin Console) consume **only** the application services. A permission-gated `QueryService` (added to `@partnera/application`) exposes the reads the UI needs and holds no business logic.
+**Why:** The domain stays the single source of truth; RBAC/isolation/audit hold uniformly because the UI never reaches around the application layer.
+
+### D-217 ✅ Authentication prepared, not connected
+`WebSession` + permission/tenant context + `protectRoute` guard + a `DevAuthProvider` placeholder (no credential check, local only). OAuth/SSO/MFA are declared seams on the `AuthProvider` interface.
+**Why:** Part 7 — the delivery layer needs session/permission plumbing now; the real provider is D-104. The tenant/actor always come from the session, never client input.
+
+### D-218 ✅ Demo data is produced through the real services (money spine runs), never faked
+`createDemoWorld()` seeds a tenant and then runs ingest → convert → commission → approve → payout → paid, plus a fraud hold and a refund clawback.
+**Why:** "Do not fake data if persistence exists." Every dashboard number is derived from the append-only ledger and repositories.
+
+---
+
 ## Open (deferred to later modules)
 
 | ID | Open decision | Blocks | Notes |

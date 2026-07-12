@@ -2,6 +2,48 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [0.4.0] — 2026-07-12 — Mega Module 4: Delivery Activation & First UX
+
+The first usable Partnera experience. Three server-rendered React apps over the
+existing services — the domain stays the single source of truth; the UI is thin.
+No engine or architecture redesign; every gate green.
+
+### Added
+- **`@partnera/web`** — delivery/presentation package:
+  - **Business Dashboard**: Overview, Analytics, Offers (+ detail/versions),
+    Campaigns, Tracking, Conversions, Commissions, Balances, Fraud,
+    Notifications, Configuration, Audit, Organization.
+  - **Affiliate Portal**: Performance, Profile, Links, Coupons, Pending/Approved/
+    Paid commission, History, Payouts, Notifications, Settings.
+  - **Admin Console** (operational structure): Overview, Health, Logs,
+    Organizations, Users, Permissions, Offers, Tracking, Fraud, Feature Flags,
+    Configuration, Audit.
+  - Responsive, accessible **app shell** (sidebar/desktop, `<details>` menu/mobile,
+    app switcher, skip link, ARIA landmarks, `aria-current`).
+  - **Workflows** through the services: create/activate/duplicate/archive offer,
+    approve/reject commission, review fraud case, update configuration.
+  - **Analytics** computed from the ledger/repositories.
+  - **Auth preparation**: `WebSession` + permission/tenant context + protected-route
+    guard + `DevAuthProvider` placeholder; OAuth/SSO/MFA seams documented.
+  - Rendered via `react-dom/server` (no bundler/hydration); node HTTP host +
+    `createDemoWorld()` seeded through the **real money spine** (not faked).
+  - 14 delivery tests (login, real data, workflows, RBAC, accessibility). 84 → 98.
+- **`QueryService`** added to `@partnera/application` — permission-gated reads for
+  the UI (holds no business logic); plus repository read helpers.
+- Offer workflow support: `OfferService.archive` / `duplicate`.
+- `docs/24-delivery-ux.md`.
+
+### Changed
+- Docs: `PROJECT_CONTEXT`, `BUILD_STATUS`, `ROADMAP`, `DECISIONS` (D-215–D-218),
+  `ARCHITECTURE`, `TECHNICAL_HANDOFF` updated.
+
+### Unchanged (deliberately)
+- Every domain engine and its public contracts. The UI consumes only services.
+
+### Not yet built (documented, behind seams)
+- Live Postgres/Prisma wiring, NestJS/Next production host + client hydration,
+  real auth provider, Shopify commerce adapter, real payout rails.
+
 ## [0.3.0] — 2026-07-12 — Mega Module 3: Persistence & Money Spine
 
 The pure-domain foundation becomes a **persistent platform**. The append-only
