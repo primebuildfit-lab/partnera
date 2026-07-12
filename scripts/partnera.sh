@@ -39,9 +39,23 @@ do_stop() {
   if p="$(running_pid)"; then echo "Stopping (PID $p)..."; kill "$p" 2>/dev/null || true; rm -f "$PID_FILE"; echo "Stopped (state saved)."; else echo "Not running."; rm -f "$PID_FILE" 2>/dev/null || true; fi
 }
 
+do_open() {
+  do_start
+  echo "Waiting for the app to be ready..."
+  for _ in $(seq 1 40); do
+    if curl -sf -o /dev/null "http://localhost:$PORT/login" 2>/dev/null; then break; fi
+    sleep 0.5
+  done
+  if command -v xdg-open >/dev/null 2>&1; then xdg-open "http://localhost:$PORT" >/dev/null 2>&1 || true
+  elif command -v open >/dev/null 2>&1; then open "http://localhost:$PORT" || true
+  else echo "Open http://localhost:$PORT in your browser."; fi
+}
+
 case "${1:-help}" in
-  install) do_build; echo "Done. Start with: ./scripts/partnera.sh start" ;;
+  install) do_build; echo "Done. Start with: ./scripts/partnera.sh open" ;;
   start)   do_start ;;
+  open)    do_open ;;
+  install-desktop|remove-desktop) echo "Desktop shortcuts are a Windows feature. Use scripts/partnera.ps1 on Windows." ;;
   stop)    do_stop ;;
   restart) do_stop; sleep 1; do_start ;;
   status)
