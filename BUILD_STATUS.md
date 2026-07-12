@@ -26,8 +26,17 @@ real money spine via a seeded demo world (not faked). Run it with
 | Typecheck (`tsc -b`, 17 packages) | ✅ pass |
 | Lint (ESLint 9 flat) | ✅ pass |
 | Build (`turbo run build`) | ✅ 17/17 packages |
-| Tests (Vitest) | ✅ 98 passed / 16 files (84 → 98) |
+| Tests (Vitest) | ✅ 102 passed / 18 files |
 | Delivery/dashboard/workflow/permission/a11y | ✅ 14 web tests (login, real data, workflows, RBAC, landmarks) |
+| Local install (startup/shutdown/update/config/first-run/persistence/recovery) | ✅ verified; 4 persistence tests (store snapshot round-trip + load-or-seed) |
+
+## Local installation (Installation Phase)
+
+The app is installable and usable locally with no external services. Data persists
+to `.partnera/data.json` (saved after each change + on shutdown); restart recovers
+it exactly. Launcher: `scripts/partnera.ps1` (Windows) / `scripts/partnera.sh` (Unix)
+— `install / start / stop / restart / status / update / logs / reset`. See
+[INSTALL.md](INSTALL.md).
 
 ## What exists now
 

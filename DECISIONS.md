@@ -171,6 +171,27 @@ Three apps (Business Dashboard, Affiliate Portal, Admin Console) consume **only*
 
 ---
 
+## Accepted (Installation Phase)
+
+### D-219 ✅ Local file persistence for the desktop/daily-use tier
+The local runtime persists the whole relational store to a single JSON file
+(`.partnera/data.json`), saved after every mutation and on shutdown (atomic
+write; Date-aware serializer). First run seeds the demo through the real services;
+later runs load from the file. Uses a real clock + UUID ids so records never
+collide across runs.
+**Why:** Makes the app genuinely usable day-to-day (data survives restarts)
+**without any external database** — Postgres/Prisma remains the production tier
+(D-207). The format is versioned; an incompatible bump is detected, not silently
+corrupted.
+
+### D-220 ✅ Cross-platform local launcher scripts
+`scripts/partnera.ps1` (Windows) + `scripts/partnera.sh` (Unix) + `partnera.cmd`
+provide install/start/stop/restart/status/update/logs/reset. Data/logs/PID live
+under `.partnera/` (gitignored). Update = rebuild from local source (no remote).
+**Why:** One-command install and daily operation for a non-deploying local user.
+
+---
+
 ## Open (deferred to later modules)
 
 | ID | Open decision | Blocks | Notes |

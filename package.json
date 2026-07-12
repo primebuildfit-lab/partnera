@@ -19,7 +19,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify": "pnpm typecheck && pnpm lint && pnpm build && pnpm test",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "app": "pnpm --filter @partnera/web serve",
+    "app:build": "pnpm --filter @partnera/web build && pnpm --filter @partnera/web bundle"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

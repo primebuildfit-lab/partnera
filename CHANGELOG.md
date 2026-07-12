@@ -2,6 +2,30 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [0.4.1] — 2026-07-12 — Installation Phase: local install & daily use
+
+Makes Partnera installable and usable locally, with no external services.
+
+### Added
+- **Durable local persistence** — the relational store snapshots to a single JSON
+  file (`.partnera/data.json`), saved after every mutation and on shutdown (atomic
+  write, Date-aware serializer). First run seeds the demo through the real
+  services; later runs load from the file. Local runtime uses a real clock + UUID
+  ids (`@partnera/persistence` `serializeStore`/`deserializeStore`; web `createLocalWorld`).
+- **Launcher scripts** — `scripts/partnera.ps1` (Windows), `scripts/partnera.sh`
+  (Unix), `partnera.cmd` shortcut: install/start/stop/restart/status/update/logs/reset.
+- **`INSTALL.md`** — first-run, startup/shutdown, update, configuration,
+  persistence/recovery, and troubleshooting.
+- 4 persistence tests (store snapshot round-trip; load-or-seed + change survival).
+  98 → 102.
+
+### Changed
+- Graceful shutdown saves state; server config by env (`PORT`, `PARTNERA_DATA`).
+- Docs: `BUILD_STATUS`, `PROJECT_CONTEXT`, `DECISIONS` (D-219/D-220), `CHANGELOG`.
+
+### Not connected (by design)
+- No Shopify, no database server, no cloud, no deploy, no external credentials.
+
 ## [0.4.0] — 2026-07-12 — Mega Module 4: Delivery Activation & First UX
 
 The first usable Partnera experience. Three server-rendered React apps over the

@@ -7,7 +7,7 @@
 >
 > Maintenance rule: update this file whenever maturity, status, decisions, or "next work"
 > change. Keep it dense. Do not let it drift.
-> **Last verified:** 2026-07-12 (Mega Module 4 — Delivery & First UX; 17 packages, 98 tests green).
+> **Last verified:** 2026-07-12 (Installation Phase — local install + durable file persistence; 17 packages, 102 tests green).
 
 ---
 
@@ -25,7 +25,7 @@ for Partnera.
 
 - **Current maturity:** Mid. Design + foundation + persistence/money-spine + **a usable UI** built. Persistent and navigable behind a repository seam; no live DB/auth provider yet.
 - **Current phase:** Phase 0 ✅ · MM2 Foundation ✅ · MM3 Persistence & Money Spine ✅ · **MM4 Delivery & First UX ✅ built, awaiting review.** Substantial Phase 1 surface coverage.
-- **Current status:** Verified-green 17-package monorepo. Three server-rendered apps (Business/Affiliate/Admin) run over the real services; the money spine and all dashboards use real data. Live Postgres/Prisma + NestJS host + auth provider remain documented activation steps.
+- **Current status:** Verified-green 17-package monorepo. Three server-rendered apps (Business/Affiliate/Admin) run over the real services; the money spine and all dashboards use real data. **Installed & usable locally** — launcher scripts + durable file persistence (`.partnera/data.json`; survives restarts), no external services. Live Postgres/Prisma + NestJS host + auth provider remain documented activation steps. See [INSTALL.md](../INSTALL.md).
 - **Current health:** Green. Typecheck + lint + build (17/17) + 98 tests all pass. Main non-code risks: not backed up (no git remote); live persistence/auth/host not yet activated (seams + canonical schema + demo host exist).
 
 **Executive summary.** On the 12 framework-agnostic domain packages, MM3 added persistence,
@@ -276,5 +276,6 @@ permission-gated reads. 98 green tests. **No engine interface changed.** Run: `p
 - **2026-07-12 — PROJECT_CONTEXT.md created** as the authoritative first-read context document.
 - **2026-07-12 — Mega Module 3 (Persistence & Money Spine) built.** Added `persistence`, `payment-engine`, `application`, `http-api` (16 packages, 84 tests, verified green). Money spine end-to-end; canonical DB model authored. Decisions D-206–D-214. No engine interface changed. See [CHANGELOG.md](../CHANGELOG.md), [ARCHITECTURE.md](../ARCHITECTURE.md), [23-persistence.md](23-persistence.md), [TECHNICAL_HANDOFF.md](../TECHNICAL_HANDOFF.md).
 - **2026-07-12 — Mega Module 4 (Delivery & First UX) built.** Added `@partnera/web` (17 packages, 98 tests, verified green): three SSR React apps over the services, workflows, analytics, auth prep, demo world; `QueryService` added to `application`. Decisions D-215–D-218. No engine interface changed. See [24-delivery-ux.md](24-delivery-ux.md).
+- **2026-07-12 — Installation Phase.** Local install made real: durable file persistence (`.partnera/data.json`, survives restarts), cross-platform launcher (`scripts/partnera.*`), `INSTALL.md`; 102 tests green. Decisions D-219/D-220. No external services connected. See [INSTALL.md](../INSTALL.md).
 
 *(Full history: git log + DECISIONS.md. Do not duplicate it here.)*
