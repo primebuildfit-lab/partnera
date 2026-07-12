@@ -12,4 +12,5 @@ export * from "./components";
 export * from "./shell";
 export * from "./page";
 export * from "./demo";
+export * from "./localWorld";
 export { handle, type WebRequest, type WebResponse } from "./app";
