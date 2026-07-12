@@ -8,11 +8,23 @@ build-level companion.
 
 ```bash
 pnpm install
-pnpm verify        # typecheck → lint → build → test  (the gate; must stay green)
-pnpm test          # 98 tests / 16 files
-pnpm --filter @partnera/web serve   # bundles + starts the apps at http://localhost:4000
-#   sign in: owner@primebuild.test · brian@primebuild.test (affiliate) · admin@partnera.test
+pnpm verify        # typecheck -> lint -> build -> test  (the gate; must stay green)
+pnpm test          # 105 tests / 18 files
+
+# Windows daily use (recommended):
+.\scripts\partnera.ps1 install-desktop   # icon + Desktop/Start Menu shortcuts
+.\scripts\partnera.ps1 open              # start + open browser  (or double-click the shortcut)
+.\scripts\partnera.ps1 stop | status | restart | update | logs | reset | remove-desktop
+
+# Foreground/dev run (any OS):
+pnpm --filter @partnera/web serve        # bundles + starts at http://localhost:4000
+#   sign in: owner@primebuild.test | brian@primebuild.test (affiliate) | admin@partnera.test
 ```
+
+Windows integration files: `scripts/partnera.ps1` (launcher), `scripts/make-icon.ps1`
+(icon generator -> `assets/partnera.ico` + `packages/web/src/brand-icon.ts`), PWA
+routes in `packages/web/src/app.tsx` (`/manifest.webmanifest`, `/icon-512.png`,
+`/favicon.ico`). Data/logs/PID under `.partnera/` (gitignored).
 
 Machine note: install scripts are blocked by default; `esbuild` is allow-listed
 via `package.json > pnpm.onlyBuiltDependencies`. Run `npm approve-scripts` if

@@ -26,17 +26,22 @@ real money spine via a seeded demo world (not faked). Run it with
 | Typecheck (`tsc -b`, 17 packages) | ✅ pass |
 | Lint (ESLint 9 flat) | ✅ pass |
 | Build (`turbo run build`) | ✅ 17/17 packages |
-| Tests (Vitest) | ✅ 102 passed / 18 files |
-| Delivery/dashboard/workflow/permission/a11y | ✅ 14 web tests (login, real data, workflows, RBAC, landmarks) |
-| Local install (startup/shutdown/update/config/first-run/persistence/recovery) | ✅ verified; 4 persistence tests (store snapshot round-trip + load-or-seed) |
+| Tests (Vitest) | ✅ 105 passed / 18 files |
+| Delivery/dashboard/workflow/permission/a11y/PWA | ✅ 17 web tests |
+| Local install (startup/shutdown/update/config/first-run/persistence/recovery) | ✅ verified; 4 persistence tests |
+| Windows integration (icon/Desktop+Start Menu shortcuts/launch/QA) | ✅ verified on Windows 11 (launched via shortcut) |
 
-## Local installation (Installation Phase)
+## Local installation (Installation + Windows Integration)
 
 The app is installable and usable locally with no external services. Data persists
 to `.partnera/data.json` (saved after each change + on shutdown); restart recovers
-it exactly. Launcher: `scripts/partnera.ps1` (Windows) / `scripts/partnera.sh` (Unix)
-— `install / start / stop / restart / status / update / logs / reset`. See
-[INSTALL.md](INSTALL.md).
+it exactly. **Windows desktop integration**: `install-desktop` adds Desktop +
+Start Menu shortcuts (generated icon) that launch the app in the browser; the app
+is also PWA-installable as a standalone window. Launcher: `scripts/partnera.ps1`
+(Windows) / `scripts/partnera.sh` (Unix) — `open / install / start / stop /
+restart / status / update / logs / reset / install-desktop / remove-desktop`.
+Windows QA audited (fresh/existing/update/restart/multiple-launch/invalid-config/
+missing-deps -> friendly errors + exit codes). See [INSTALL.md](INSTALL.md).
 
 ## What exists now
 

@@ -2,6 +2,29 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [0.4.2] — 2026-07-12 — Windows desktop integration
+
+Makes Partnera launch like a normal Windows app.
+
+### Added
+- **Application icon** — `scripts/make-icon.ps1` generates `assets/partnera.ico`
+  (shortcuts) and `packages/web/src/brand-icon.ts` (base64 PNG for web).
+- **Desktop + Start Menu shortcuts** — `partnera.ps1 install-desktop` /
+  `remove-desktop` (WScript.Shell `.lnk`, correct icon/name/working-dir, `open` target).
+- **`open` command** — start (if needed), wait until ready, launch the browser.
+- **PWA** — web manifest + icon/favicon routes + head links (theme-color, apple/
+  ms meta) so the app is installable as a standalone windowed desktop app.
+- 3 PWA delivery tests (manifest, icon bytes, head links). 102 -> 105.
+
+### Changed / hardened
+- Launcher: ASCII-safe (PS 5.1 encoding), prerequisite checks (node/pnpm),
+  friendly errors, explicit exit codes, try/catch wrapper. Unix launcher gains `open`.
+- Server serves binary asset bodies (icon PNG).
+- Windows QA audited: fresh/existing install, update, restart, shutdown, multiple
+  launches, missing/invalid config, missing deps -> friendly messages.
+- Docs: `INSTALL.md` (desktop/Start Menu/PWA, removal, Windows limitations),
+  `BUILD_STATUS`, `PROJECT_CONTEXT`, `TECHNICAL_HANDOFF`, `DECISIONS` (D-221).
+
 ## [0.4.1] — 2026-07-12 — Installation Phase: local install & daily use
 
 Makes Partnera installable and usable locally, with no external services.
