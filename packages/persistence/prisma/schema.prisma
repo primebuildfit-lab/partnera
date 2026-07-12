@@ -1,0 +1,463 @@
+// Partnera — canonical production database model (PostgreSQL).
+//
+// This is the authoritative schema the in-memory reference repositories mirror
+// (see ../src/relational/store.ts and ../src/unit-of-work.ts). It is a delivery
+// artifact: generating the Prisma client and running migrations is the deploy
+// step (D-101 hosting), intentionally not wired into the TypeScript build so the
+// monorepo stays green and offline-safe. When activated, a Prisma-backed store
+// implements the same repository ports with **no engine or application change**.
+//
+// Invariants encoded here + in sql/0001_init.sql:
+//   - Money is (currency, amountMinor BIGINT) — never a float.
+//   - Append-only tables (ledger_events, payout_events, audit_log, clicks,
+//     coupon_uses, refunds, fraud_signals, fraud_scores, offer_versions,
+//     idempotency_keys) get UPDATE/DELETE-blocking triggers in the SQL migration.
+//   - Every operational row carries tenant_id; composite unique keys enforce
+//     idempotency; `version` columns back optimistic concurrency.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & tenancy
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id         String     @id
+  name       String
+  createdAt  DateTime   @default(now()) @map("created_at")
+  businesses Business[]
+
+  @@map("organizations")
+}
+
+model Business {
+  id             String        @id
+  organizationId String?       @map("organization_id")
+  name           String
+  status         String        @default("trial")
+  planKey        String        @default("starter") @map("plan_key")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("businesses")
+}
+
+model User {
+  id          String       @id
+  email       String       @unique
+  displayName String       @map("display_name")
+  status      String       @default("active")
+  authSubject String?      @map("auth_subject")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  memberships Membership[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id
+  key         String
+  name        String
+  scopeLevel  String   @map("scope_level")
+  permissions String[] // permission catalog keys; wildcards allowed
+  isSystem    Boolean  @default(false) @map("is_system")
+
+  @@map("roles")
+}
+
+model Membership {
+  id             String   @id
+  userId         String   @map("user_id")
+  scopeKind      String   @map("scope_kind") // platform | organization | business
+  organizationId String?  @map("organization_id")
+  businessId     String?  @map("business_id")
+  roleIds        String[] @map("role_ids")
+  status         String   @default("active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([businessId])
+  @@map("memberships")
+}
+
+// ---------------------------------------------------------------------------
+// Offers (append-only versions; the identity row points at the active version)
+// ---------------------------------------------------------------------------
+
+model Offer {
+  id               String         @id
+  tenantId         String         @map("tenant_id")
+  programId        String         @map("program_id")
+  name             String
+  status           String         @default("draft")
+  latestVersion    Int            @map("latest_version")
+  activeVersion    Int?           @map("active_version")
+  stackingPriority Int            @default(0) @map("stacking_priority")
+  version          Int            @default(1) // optimistic concurrency
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  versions         OfferVersion[]
+
+  @@index([tenantId, programId])
+  @@map("offers")
+}
+
+model OfferVersion {
+  offerId    String   @map("offer_id")
+  tenantId   String   @map("tenant_id")
+  version    Int
+  definition Json // full block composition snapshot (immutable)
+  createdAt  DateTime @default(now()) @map("created_at")
+  offer      Offer    @relation(fields: [offerId], references: [id])
+
+  @@id([offerId, version])
+  @@index([tenantId])
+  @@map("offer_versions")
+}
+
+// ---------------------------------------------------------------------------
+// Tracking
+// ---------------------------------------------------------------------------
+
+model TrackingLink {
+  id          String   @id
+  tenantId    String   @map("tenant_id")
+  affiliateId String   @map("affiliate_id")
+  campaignId  String?  @map("campaign_id")
+  code        String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@map("tracking_links")
+}
+
+model Coupon {
+  id          String   @id
+  tenantId    String   @map("tenant_id")
+  affiliateId String   @map("affiliate_id")
+  campaignId  String?  @map("campaign_id")
+  code        String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@map("coupons")
+}
+
+model TrackingSession {
+  tenantId   String   @map("tenant_id")
+  token      String
+  firstSeenAt DateTime @map("first_seen_at")
+  lastSeenAt  DateTime @map("last_seen_at")
+  signals    Json
+
+  @@id([tenantId, token])
+  @@map("tracking_sessions")
+}
+
+model Click {
+  id           String   @id
+  tenantId     String   @map("tenant_id")
+  affiliateId  String   @map("affiliate_id")
+  campaignId   String?  @map("campaign_id")
+  linkCode     String   @map("link_code")
+  sessionToken String?  @map("session_token")
+  occurredAt   DateTime @map("occurred_at")
+  signals      Json
+
+  @@index([tenantId, sessionToken])
+  @@map("clicks")
+}
+
+model CouponUse {
+  couponId    String   @map("coupon_id")
+  orderId     String   @map("order_id")
+  tenantId    String   @map("tenant_id")
+  affiliateId String   @map("affiliate_id")
+  campaignId  String?  @map("campaign_id")
+  code        String
+  occurredAt  DateTime @map("occurred_at")
+
+  @@id([couponId, orderId])
+  @@map("coupon_uses")
+}
+
+model Order {
+  id              String   @id
+  tenantId        String   @map("tenant_id")
+  platformOrderId String   @map("platform_order_id")
+  amountMinor     BigInt   @map("amount_minor")
+  currency        String
+  customerType    String   @map("customer_type")
+  couponCodes     String[] @map("coupon_codes")
+  sessionToken    String?  @map("session_token")
+  placedAt        DateTime @map("placed_at")
+
+  @@unique([tenantId, platformOrderId])
+  @@map("orders")
+}
+
+model Conversion {
+  id          String   @id
+  tenantId    String   @map("tenant_id")
+  orderId     String   @map("order_id")
+  affiliateId String   @map("affiliate_id")
+  campaignId  String?  @map("campaign_id")
+  basis       String // link | coupon | session
+  attributedAt DateTime @map("attributed_at")
+  reversed    Boolean  @default(false)
+  version     Int      @default(1)
+
+  @@unique([tenantId, orderId])
+  @@index([tenantId, affiliateId])
+  @@map("conversions")
+}
+
+model Refund {
+  id           String   @id
+  tenantId     String   @map("tenant_id")
+  orderId      String   @map("order_id")
+  amountMinor  BigInt   @map("amount_minor")
+  currency     String
+  reason       String
+  occurredAt   DateTime @map("occurred_at")
+
+  @@index([tenantId, orderId])
+  @@map("refunds")
+}
+
+// ---------------------------------------------------------------------------
+// Money spine: append-only ledger + payout events. Balances are DERIVED.
+// ---------------------------------------------------------------------------
+
+model LedgerEvent {
+  id            String   @id
+  tenantId      String   @map("tenant_id")
+  affiliateId   String   @map("affiliate_id")
+  commissionId  String   @map("commission_id")
+  type          String
+  occurredAt    DateTime @map("occurred_at")
+  correlationId String   @map("correlation_id")
+  // commission.created fields (null on other event types)
+  conversionId  String?  @map("conversion_id")
+  offerId       String?  @map("offer_id")
+  offerVersion  Int?     @map("offer_version")
+  amountCurrency String? @map("amount_currency")
+  amountMinor   BigInt?  @map("amount_minor")
+  rewardKind    String?  @map("reward_kind")
+  reasonPath    String[] @map("reason_path")
+  // adjustment delta / reversal-reject reason / paid payout id
+  deltaCurrency String?  @map("delta_currency")
+  deltaMinor    BigInt?  @map("delta_minor")
+  reason        String?
+  payoutId      String?  @map("payout_id")
+
+  @@index([tenantId, commissionId])
+  @@index([tenantId, affiliateId])
+  @@index([tenantId, conversionId])
+  @@map("ledger_events")
+}
+
+model PayoutEvent {
+  id            String   @id
+  tenantId      String   @map("tenant_id")
+  payoutId      String   @map("payout_id")
+  affiliateId   String   @map("affiliate_id")
+  actorUserId   String   @map("actor_user_id")
+  type          String
+  occurredAt    DateTime @map("occurred_at")
+  correlationId String   @map("correlation_id")
+  amountCurrency String? @map("amount_currency")
+  amountMinor   BigInt?  @map("amount_minor")
+  commissionIds String[] @map("commission_ids")
+  destinationRef String? @map("destination_ref")
+  railName      String?  @map("rail_name")
+  providerRef   String?  @map("provider_ref")
+  reason        String?
+  notBefore     DateTime? @map("not_before")
+
+  @@index([tenantId, payoutId])
+  @@index([tenantId, affiliateId])
+  @@map("payout_events")
+}
+
+/// Materialized, rebuildable balance projection — a CACHE, never the source of
+/// truth. Always reconstructable by folding ledger_events (docs/06, risks E1).
+model BalanceSnapshot {
+  tenantId    String   @map("tenant_id")
+  affiliateId String   @map("affiliate_id")
+  currency    String
+  pendingMinor   BigInt @map("pending_minor")
+  availableMinor BigInt @map("available_minor")
+  paidMinor      BigInt @map("paid_minor")
+  reversedMinor  BigInt @map("reversed_minor")
+  rebuiltAt   DateTime @map("rebuilt_at")
+
+  @@id([tenantId, affiliateId, currency])
+  @@map("balance_snapshots")
+}
+
+// ---------------------------------------------------------------------------
+// Fraud
+// ---------------------------------------------------------------------------
+
+model FraudSignal {
+  id          String   @id
+  tenantId    String   @map("tenant_id")
+  subjectKind String   @map("subject_kind")
+  subjectId   String   @map("subject_id")
+  signalType  String   @map("signal_type")
+  strength    Float
+  detail      String
+  observedAt  DateTime @map("observed_at")
+
+  @@index([tenantId, subjectId])
+  @@map("fraud_signals")
+}
+
+model FraudScore {
+  id          String   @id
+  tenantId    String   @map("tenant_id")
+  subjectKind String   @map("subject_kind")
+  subjectId   String   @map("subject_id")
+  score       Int
+  band        String
+  action      String
+  contributing String[] @map("contributing")
+  computedAt  DateTime @map("computed_at")
+
+  @@index([tenantId, subjectId])
+  @@map("fraud_scores")
+}
+
+model FraudCase {
+  id          String   @id
+  tenantId    String   @map("tenant_id")
+  subjectKind String   @map("subject_kind")
+  subjectId   String   @map("subject_id")
+  status      String   @default("open")
+  evidence    Json
+  history     Json
+  openedAt    DateTime @map("opened_at")
+  resolvedAt  DateTime? @map("resolved_at")
+  version     Int      @default(1)
+
+  @@index([tenantId, status])
+  @@map("fraud_cases")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id              String   @id
+  tenantId        String?  @map("tenant_id")
+  recipientUserId String   @map("recipient_user_id")
+  templateKey     String   @map("template_key")
+  channel         String
+  category        String
+  data            Json
+  status          String   @default("queued")
+  attempts        Int      @default(0)
+  scheduledAt     DateTime @map("scheduled_at")
+  nextAttemptAt   DateTime? @map("next_attempt_at")
+  version         Int      @default(1)
+
+  @@index([recipientUserId])
+  @@map("notifications")
+}
+
+model DeliveryRecord {
+  id             String   @id
+  notificationId String   @map("notification_id")
+  channel        String
+  status         String
+  attempt        Int
+  error          String?
+  at             DateTime
+
+  @@index([notificationId])
+  @@map("delivery_records")
+}
+
+model NotificationPreference {
+  userId         String   @id @map("user_id")
+  channelOptIn   Json     @map("channel_opt_in")
+  mutedCategories String[] @map("muted_categories")
+
+  @@map("notification_preferences")
+}
+
+model NotificationTemplate {
+  key     String @id
+  channel String
+  locale  String
+  subject String?
+  body    String
+
+  @@map("notification_templates")
+}
+
+// ---------------------------------------------------------------------------
+// Extensions, configuration, audit, idempotency
+// ---------------------------------------------------------------------------
+
+model Extension {
+  id               String   @id
+  tenantId         String?  @map("tenant_id")
+  submittedByUserId String  @map("submitted_by_user_id")
+  key              String
+  versionLabel     String   @map("version_label")
+  manifest         Json
+  state            String
+  submittedAt      DateTime @map("submitted_at")
+  updatedAt        DateTime @map("updated_at")
+  rowVersion       Int      @default(1) @map("row_version")
+
+  @@unique([key, versionLabel])
+  @@map("extensions")
+}
+
+model ConfigValue {
+  key       String
+  tenantId  String?  @map("tenant_id")
+  value     Json
+  updatedAt DateTime @map("updated_at")
+
+  @@id([key, tenantId])
+  @@map("config_values")
+}
+
+model AuditLog {
+  id                String   @id
+  tenantId          String?  @map("tenant_id")
+  actorUserId       String   @map("actor_user_id")
+  action            String
+  resourceType      String   @map("resource_type")
+  resourceId        String   @map("resource_id")
+  at                DateTime
+  metadata          Json
+  byPlatformOperator Boolean @map("by_platform_operator")
+
+  @@index([tenantId, at])
+  @@map("audit_log")
+}
+
+model IdempotencyKey {
+  scope     String
+  key       String
+  resultRef String   @map("result_ref")
+  createdAt DateTime @map("created_at")
+
+  @@id([scope, key])
+  @@map("idempotency_keys")
+}
