@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@partnera/core": "workspace:*",
+    "@partnera/creator-marketplace": "workspace:*",
     "@partnera/auth": "workspace:*",
     "@partnera/offer-engine": "workspace:*",
     "@partnera/tracking-engine": "workspace:*",

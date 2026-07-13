@@ -21,6 +21,7 @@ import { type OfferId } from "@partnera/core";
 import { type PageContext } from "../page";
 import { PageHeader, StatTile, StatusBadge, DefinitionList, BarChart } from "../components";
 import { money, moneyJson, minor, date, dateTime, num, titleCase } from "../format";
+import { renderBusinessCreators } from "./creator";
 
 /** Business Dashboard — every section is connected to the real services. */
 export async function renderBusiness(pc: PageContext): Promise<ReactNode> {
@@ -54,6 +55,8 @@ export async function renderBusiness(pc: PageContext): Promise<ReactNode> {
       return audit(pc);
     case sub === "organization":
       return organization(pc);
+    case sub === "creators" || sub.startsWith("creators/"):
+      return renderBusinessCreators(pc);
     default:
       return <EmptyState title="Not found" description={`No business page for “${sub}”.`} />;
   }

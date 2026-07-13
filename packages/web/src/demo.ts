@@ -53,7 +53,7 @@ export interface DemoWorld {
   readonly affiliateId: AffiliateId;
   readonly authProvider: DevAuthProvider;
   readonly sessionStore: InMemorySessionStore;
-  readonly users: Readonly<Record<"owner" | "finance" | "affiliate" | "admin", string>>;
+  readonly users: Readonly<Record<"owner" | "finance" | "affiliate" | "admin" | "creator", string>>;
 }
 
 export interface DemoRuntime {
@@ -67,6 +67,7 @@ const USERS = {
   finance: "finance@primebuild.test",
   affiliate: "brian@primebuild.test",
   admin: "admin@partnera.test",
+  creator: "cora@creators.test",
 } as const;
 
 /** Construct the runtime (services, auth, ids) without writing any data. */
@@ -223,6 +224,73 @@ export function buildDemoRuntime(opts?: { clock?: Clock; ids?: IdGenerator }): D
       currency: "USD",
       reason: "customer return",
     });
+
+    // --- Creator Marketplace: run the real creator spine (money simulated) ---
+    const creator = mkUser("creator", USERS.creator, "Cora Creator", "creator", false);
+    const svc = services;
+    svc.creator.registerProfile(creator, {
+      displayName: "Cora Creator",
+      skills: ["editing", "on-camera"],
+      formats: ["ugc_video", "short_form_video"],
+      platforms: ["tiktok", "instagram"],
+    });
+
+    const programId2 = svc.creator.createProgram(owner, { name: "PrimeBuild Creators", slug: "creators" });
+    const campaignId = svc.creator.createCampaign(owner, { programId: programId2, name: "Summer Launch", budgetMinor: "500000", currency: "USD" });
+
+    // Opportunity A — goes all the way to paid + published to the library.
+    const oppA = svc.creator.createOpportunity(owner, {
+      campaignId,
+      title: "30s UGC product video",
+      description: "Authentic vertical UGC featuring the PrimeBuild kit. Hook in first 3s.",
+      eligibility: "open",
+      deliverables: [
+        { format: "ugc_video", paymentMinor: "15000", currency: "USD", minWidthPx: 1080, minHeightPx: 1920, minDurationSec: 15, maxDurationSec: 60, requiresAudio: true, requiresCta: true, language: "en", talkingPoints: ["3-second hook", "show the product", "clear CTA"], licenseDurationDays: 365 },
+      ],
+    });
+    await svc.creator.publishOpportunity(owner, oppA.id);
+    const delA = uow.creator.listDeliverables(oppA.id)[0]!;
+
+    const appA = svc.creator.apply(creator, oppA.id);
+    svc.creator.acceptTerms(creator, appA.id); // default 3% business-paid
+    const subA = await svc.creator.submit(creator, {
+      opportunityId: oppA.id,
+      deliverableId: delA.id,
+      fileName: "primebuild-ugc.mp4",
+      widthPx: 1080, heightPx: 1920, durationSec: 32, hasAudio: true, hasCta: true, language: "en",
+      note: "Shot outdoors, natural light.",
+    });
+    svc.creator.runAIReview(owner, subA.id); // advisory only
+    await svc.creator.decide(owner, subA.id, {
+      decision: "approve",
+      categoryScores: { brief_compliance: 92, technical_quality: 85, brand_alignment: 88, creativity: 80, product_clarity: 90 },
+      legalSafetyPass: true, fileRequirementsPass: true, reason: "Strong hook, product clearly shown.",
+    });
+    const payA = uow.creator.listPaymentsForTenant(tenantId).find((p) => p.submissionId === subA.id)!;
+    await svc.creator.authorizePayment(finance, payA.id);
+    await svc.creator.executePayout(finance, payA.id); // SIMULATED
+    await svc.creator.publishToLibrary(owner, subA.id);
+    svc.creator.createRankRule(owner, { campaignId, minRank: "silver" });
+
+    // Opportunity B — left open with a submission awaiting review (review queue).
+    const oppB = svc.creator.createOpportunity(owner, {
+      campaignId,
+      title: "Unboxing short",
+      description: "15-30s unboxing with genuine reaction.",
+      eligibility: "open",
+      deliverables: [
+        { format: "unboxing", paymentMinor: "8000", currency: "USD", minDurationSec: 15, maxDurationSec: 45, requiresAudio: true, language: "en", licenseDurationDays: 180 },
+      ],
+    });
+    await svc.creator.publishOpportunity(owner, oppB.id);
+    const delB = uow.creator.listDeliverables(oppB.id)[0]!;
+    const appB = svc.creator.apply(creator, oppB.id);
+    svc.creator.acceptTerms(creator, appB.id);
+    await svc.creator.submit(creator, {
+      opportunityId: oppB.id, deliverableId: delB.id, fileName: "unboxing.mp4",
+      durationSec: 28, hasAudio: true, language: "en", note: "First reaction, one take.",
+    });
+    // (left under_review so the business has a live review queue to work)
   };
 
   return { world, seed };

@@ -86,6 +86,12 @@ function AppSwitcher({ ctx, scope }: { ctx: WebContext; scope: AppScope }): JSX.
     { key: "business", label: "Business", href: "/business", show: true },
     { key: "affiliate", label: "Affiliate", href: "/affiliate", show: true },
     {
+      key: "creator",
+      label: "Creator",
+      href: "/creator",
+      show: scope === "creator" || ctx.can("creator.self"),
+    },
+    {
       key: "admin",
       label: "Admin",
       href: "/admin",
@@ -148,7 +154,16 @@ function SessionBox({ ctx, scope }: { ctx: WebContext; scope: AppScope }): JSX.E
 }
 
 function titleFor(scope: AppScope): string {
-  return scope === "business" ? "Business Dashboard" : scope === "affiliate" ? "Affiliate Portal" : "Admin Console";
+  switch (scope) {
+    case "business":
+      return "Business Dashboard";
+    case "affiliate":
+      return "Affiliate Portal";
+    case "creator":
+      return "Creator Portal";
+    case "admin":
+      return "Admin Console";
+  }
 }
 
 function isCurrent(currentPath: string, href: string): boolean {

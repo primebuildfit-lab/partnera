@@ -9,6 +9,7 @@ import { PageHeader } from "./components";
 import { renderBusiness } from "./pages/business";
 import { renderAffiliate } from "./pages/affiliate";
 import { renderAdmin } from "./pages/admin";
+import { renderCreator } from "./pages/creator";
 import { loginPage } from "./pages/login";
 import { ICON_PNG_BASE64 } from "./brand-icon";
 
@@ -139,6 +140,8 @@ async function renderScope(scope: AppScope, pc: PageContext) {
       return renderAffiliate(pc);
     case "admin":
       return renderAdmin(pc);
+    case "creator":
+      return renderCreator(pc);
   }
 }
 
@@ -208,6 +211,72 @@ async function workflow(world: DemoWorld, ctx: WebContext, req: WebRequest): Pro
       await services.configuration.set(request, req.form.key ?? "", parseConfigValue(req.form.value ?? ""));
       return back("/business/configuration", "success", "Configuration saved.");
     }
+
+    // --- Creator Marketplace: business/staff workflows ---
+    if (parts[0] === "business" && parts[1] === "creators") {
+      const kind = parts[2]; // opportunities | submissions | payments
+      const id = parts[3] ?? "";
+      const action = parts[4] ?? "";
+      if (kind === "opportunities" && action === "publish") {
+        await services.creator.publishOpportunity(request, asId(id));
+        return back("/business/creators/opportunities", "success", "Opportunity published.");
+      }
+      if (kind === "submissions" && (action === "approve" || action === "reject" || action === "revision")) {
+        const decision = action === "revision" ? "revision" : action;
+        await services.creator.decide(request, asId(id), {
+          decision: decision as "approve" | "reject" | "revision",
+          categoryScores: { brief_compliance: 88, technical_quality: 85, brand_alignment: 86, creativity: 82, product_clarity: 88 },
+          legalSafetyPass: req.form.legal !== "fail",
+          fileRequirementsPass: req.form.file !== "fail",
+          reason: req.form.reason ?? `${decision} from review workspace`,
+        });
+        return back("/business/creators/submissions", "success", `Submission ${decision}d.`);
+      }
+      if (kind === "submissions" && action === "publish") {
+        await services.creator.publishToLibrary(request, asId(id));
+        return back("/business/creators/library", "success", "Content published to the library.");
+      }
+      if (kind === "payments" && action === "authorize") {
+        await services.creator.authorizePayment(request, asId(id));
+        return back("/business/creators/payments", "success", "Payment authorized (fee recognized).");
+      }
+      if (kind === "payments" && action === "execute") {
+        await services.creator.executePayout(request, asId(id));
+        return back("/business/creators/payments", "success", "Payout executed (SIMULATED — no real money).");
+      }
+    }
+
+    // --- Creator Marketplace: creator self workflows (ownership-authorized) ---
+    if (parts[0] === "creator") {
+      if (req.path === "/creator/profile") {
+        services.creator.registerProfile(request, { displayName: req.form.displayName ?? "New Creator" });
+        return back("/creator", "success", "Creator profile created.");
+      }
+      if (parts[1] === "opportunities" && parts[3] === "apply") {
+        services.creator.apply(request, asId(parts[2]!));
+        return back("/creator/jobs", "success", "Applied. Accept terms to open the job.");
+      }
+      if (parts[1] === "applications" && parts[3] === "accept") {
+        services.creator.acceptTerms(request, asId(parts[2]!));
+        return back("/creator/jobs", "success", "Terms accepted — fee locked, job open.");
+      }
+      if (parts[1] === "opportunities" && parts[3] === "submit") {
+        await services.creator.submit(request, {
+          opportunityId: asId(parts[2]!),
+          deliverableId: asId(req.form.deliverableId ?? ""),
+          fileName: req.form.fileName ?? "submission.mp4",
+          durationSec: req.form.durationSec ? Number(req.form.durationSec) : undefined,
+          widthPx: req.form.widthPx ? Number(req.form.widthPx) : undefined,
+          heightPx: req.form.heightPx ? Number(req.form.heightPx) : undefined,
+          hasAudio: req.form.hasAudio === "on",
+          hasCta: req.form.hasCta === "on",
+          language: req.form.language || undefined,
+          note: req.form.note || undefined,
+        });
+        return back("/creator/jobs", "success", "Submission uploaded (local demo storage — no real file stored).");
+      }
+    }
+
     return back(`/${scopeFromPath(req.path)}`, "warning", "Unknown action.");
   } catch (error) {
     const message = error instanceof DomainError ? error.message : "Action failed.";
@@ -241,11 +310,21 @@ function parseConfigValue(raw: string): unknown {
 function scopeFromPath(path: string): AppScope {
   if (path.startsWith("/affiliate")) return "affiliate";
   if (path.startsWith("/admin")) return "admin";
+  if (path.startsWith("/creator")) return "creator";
   return "business";
 }
 
 function titleFor(scope: AppScope): string {
-  return scope === "business" ? "Business Dashboard" : scope === "affiliate" ? "Affiliate Portal" : "Admin Console";
+  switch (scope) {
+    case "business":
+      return "Business Dashboard";
+    case "affiliate":
+      return "Affiliate Portal";
+    case "creator":
+      return "Creator Portal";
+    case "admin":
+      return "Admin Console";
+  }
 }
 
 function errorResponse(ctx: WebContext, scope: AppScope, path: string, error: unknown): WebResponse {

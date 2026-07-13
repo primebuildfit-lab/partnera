@@ -42,6 +42,16 @@ export const BUSINESS_NAV: NavTree = [
     ],
   },
   {
+    title: "Creators",
+    items: [
+      { label: "Creator Dashboard", href: "/business/creators", permission: "creator.view" },
+      { label: "Opportunities", href: "/business/creators/opportunities", permission: "content_opportunity.manage" },
+      { label: "Review Queue", href: "/business/creators/submissions", permission: "submission.review" },
+      { label: "Creator Payments", href: "/business/creators/payments", permission: "creator_payment.authorize" },
+      { label: "Content Library", href: "/business/creators/library", permission: "content_asset.manage" },
+    ],
+  },
+  {
     title: "Trust & Safety",
     items: [{ label: "Fraud", href: "/business/fraud", permission: "fraud.read" }],
   },
@@ -82,10 +92,33 @@ export const AFFILIATE_NAV: NavTree = [
     ],
   },
   {
+    title: "Content",
+    items: [{ label: "Content Library", href: "/affiliate/content", permission: "affiliate_content.view" }],
+  },
+  {
     title: "Account",
     items: [
       { label: "Notifications", href: "/affiliate/notifications" },
       { label: "Settings", href: "/affiliate/settings" },
+    ],
+  },
+];
+
+/** Creator Portal navigation. Creator self-actions are ownership-authorized. */
+export const CREATOR_NAV: NavTree = [
+  {
+    title: "Work",
+    items: [
+      { label: "Overview", href: "/creator" },
+      { label: "Discover", href: "/creator/discover" },
+      { label: "My Jobs", href: "/creator/jobs" },
+    ],
+  },
+  {
+    title: "Account",
+    items: [
+      { label: "Earnings", href: "/creator/earnings" },
+      { label: "Profile", href: "/creator/profile" },
     ],
   },
 ];
@@ -128,5 +161,7 @@ export function navFor(scope: AppScope): NavTree {
       return AFFILIATE_NAV;
     case "admin":
       return ADMIN_NAV;
+    case "creator":
+      return CREATOR_NAV;
   }
 }

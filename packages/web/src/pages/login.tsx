@@ -39,6 +39,7 @@ export function loginPage(world: DemoWorld, error?: string): JSX.Element {
                 options={[
                   { value: "business", label: "Business Dashboard" },
                   { value: "affiliate", label: "Affiliate Portal" },
+                  { value: "creator", label: "Creator Portal" },
                   { value: "admin", label: "Admin Console" },
                 ]}
               />
@@ -54,6 +55,7 @@ export function loginPage(world: DemoWorld, error?: string): JSX.Element {
               <li>{world.users.owner} — business owner</li>
               <li>{world.users.finance} — finance</li>
               <li>{world.users.affiliate} — affiliate (Brian)</li>
+              <li>{world.users.creator} — creator (Cora)</li>
               <li>{world.users.admin} — platform admin</li>
             </ul>
           </div>

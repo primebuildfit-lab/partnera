@@ -643,6 +643,80 @@ export class CreatorService extends ServiceBase {
     return resolveAssetAccess(accessCtx, rules);
   }
 
+  // --- Reads for the UI (permission-gated; the UI never reaches past services) ---
+
+  listOpportunities(ctx: RequestContext): ContentOpportunity[] {
+    this.require(ctx, "creator.view");
+    return this.uow.creator.listOpportunities(ctx.tenantId);
+  }
+  /** Public: deliverable specs of an opportunity (shown to creators browsing + businesses). */
+  deliverablesFor(_ctx: RequestContext, opportunityId: OpportunityId): DeliverableRequirement[] {
+    return this.uow.creator.listDeliverables(opportunityId);
+  }
+  reviewQueue(ctx: RequestContext): Submission[] {
+    this.require(ctx, "submission.review");
+    return this.uow.creator.listSubmissionsForTenant(ctx.tenantId).filter((s) => s.status === "under_review" || s.status === "resubmitted");
+  }
+  listSubmissions(ctx: RequestContext): Submission[] {
+    this.require(ctx, "submission.review");
+    return this.uow.creator.listSubmissionsForTenant(ctx.tenantId);
+  }
+  listPayments(ctx: RequestContext): CreatorPayment[] {
+    this.require(ctx, "creator_payment.authorize");
+    return this.uow.creator.listPaymentsForTenant(ctx.tenantId);
+  }
+  listAssets(ctx: RequestContext) {
+    this.require(ctx, "content_asset.manage");
+    return this.uow.creator.listAssets(ctx.tenantId).map((asset) => ({
+      asset,
+      license: this.uow.creator.getLicenseForAsset(asset.id) ?? null,
+    }));
+  }
+  creatorDisplayName(creatorId: CreatorId): string {
+    return this.uow.creator.getProfile(creatorId)?.displayName ?? creatorId;
+  }
+  versionsFor(ctx: RequestContext, submissionId: SubmissionId) {
+    this.require(ctx, "submission.review");
+    return this.uow.creator.listVersions(submissionId);
+  }
+
+  /** Affiliate content library: assets with license + this affiliate's access decision. */
+  libraryForAffiliate(ctx: RequestContext, affiliateRank: AffiliateRank) {
+    this.require(ctx, "affiliate_content.view");
+    return this.uow.creator.listAssets(ctx.tenantId).map((asset) => {
+      const license = this.uow.creator.getLicenseForAsset(asset.id) ?? null;
+      const rules = this.uow.creator
+        .listRankRules(ctx.tenantId)
+        .filter((r) => r.status === "active" && (r.campaignId === null || r.campaignId === asset.campaignId))
+        .map((r) => ({ minRank: r.minRank }));
+      const decision = resolveAssetAccess(
+        {
+          affiliateRank,
+          enrolled: true,
+          inGoodStanding: true,
+          assetStatus: asset.status,
+          licenseStatus: license?.status ?? "expired",
+          licenseAllowsAffiliateDistribution: (license?.usageRights ?? []).includes("affiliate_distribution"),
+        },
+        rules,
+      );
+      return { asset, license, decision };
+    });
+  }
+
+  // Creator self reads
+  myProfile(ctx: RequestContext): CreatorProfile | null {
+    return this.uow.creator.getProfileByUser(ctx.actorUserId) ?? null;
+  }
+  myApplications(ctx: RequestContext): CreatorApplication[] {
+    const creator = this.creatorSelf(ctx);
+    return this.uow.creator.listApplicationsForCreator(creator.id);
+  }
+  mySubmissions(ctx: RequestContext): Submission[] {
+    const creator = this.creatorSelf(ctx);
+    return this.uow.creator.listSubmissionsForCreator(creator.id);
+  }
+
   // --- helpers ---
 
   private creatorSelf(ctx: RequestContext): CreatorProfile {

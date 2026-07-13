@@ -52,14 +52,14 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
 | P2 | Domain engines & state machines | ✅ |
 | P3 | Persistence & tenant isolation | ✅ |
 | P4 | Application services | ✅ |
-| P5 | Creator Portal (UI) | 🟡 |
-| P6 | Business Creator Dashboard (UI) | ⬜ |
-| P7 | Platform Admin & moderation (UI) | ⬜ |
-| P8 | Content library & affiliate access | ⬜ |
-| P9 | Human review workflows | ⬜ |
-| P10 | AI-assisted review preparation (mock) | ⬜ |
-| P11 | Payment & fee engine (simulated) | ⬜ |
-| P12 | Notifications & analytics | ⬜ |
+| P5 | Creator Portal (UI) | ✅ |
+| P6 | Business Creator Dashboard (UI) | ✅ |
+| P7 | Platform Admin & moderation (UI) | 🟡 (audit/events reused; dedicated admin creator console deferred) |
+| P8 | Content library & affiliate access | ✅ |
+| P9 | Human review workflows | ✅ (single + AI-advisory; multi-reviewer deferred) |
+| P10 | AI-assisted review preparation (mock) | ✅ |
+| P11 | Payment & fee engine (simulated) | ✅ |
+| P12 | Notifications & analytics | 🟡 (events emitted + role reads; dashboards partial) |
 | P13 | Shopify preparation (contracts/runbooks only) | ⬜ |
 | P14 | Local installation | ⬜ |
 | P15 | Deep QA (detect → correct → certify) | ⬜ |
@@ -121,6 +121,28 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
 - **Assumptions:** payer default business (creator keeps full gross); SoD = approver ≠
   authorizer; execute is a separate permission. **Blockers:** real payout provider (🔒 CM14).
 - **Verification:** 24 files, 149 tests, `pnpm verify` exit 0.
+
+### P5–P12 ✅/🟡 UI surfaces + seed + review/payment/AI/library
+- **Files:** new `web/src/pages/creator.tsx` (Creator Portal + business "Creators" section +
+  affiliate Content Library); new **"creator" AppScope** across `auth.ts`, `nav.ts`,
+  `shell.tsx` (app switcher + titles), `app.tsx` (routing + creator/business workflow POST
+  handlers), `login.tsx` (scope + demo user). `business.tsx`/`affiliate.tsx` routers wire the
+  new sections. `demo.ts` seed extended: a full creator flow through the **real services**
+  (register → program/campaign/opportunity → publish → apply → accept (fee snapshot) →
+  submit → AI advisory → approve → authorize → **SIMULATED** payout → publish to library →
+  rank rule), plus a second opportunity left in the review queue. Creator user **Cora**
+  (`cora@creators.test`). Read methods added to `CreatorService` for the UI (permission-gated).
+- **Surfaces:** Creator Portal (overview/discover/jobs/earnings/profile); Business Creators
+  (dashboard/opportunities/review queue/payments/library) with approve/reject/revision +
+  authorize/execute(sim)/publish actions; Affiliate Content Library (rank-gated unlock view).
+  All render **real service data**; local storage + payouts are clearly labelled SIMULATED.
+- **Tests:** 5 new web tests (creator portal earnings $150 simulated; business dashboard +
+  review queue; affiliate rank unlock; apply workflow; SoD-safe payments view). Existing 17
+  web tests unchanged and green.
+- **Deferred (honestly):** dedicated Admin creator-moderation console (audit/events reused
+  now); multi-reviewer approval UI; full analytics dashboards; page-builder UI (P13 Shopify
+  prep, P-analytics dashboards) — tracked, not built.
+- **Verification:** 24 files, **154 tests**, `pnpm verify` exit 0 (3 pre-existing warnings).
 
 *(Phases below are appended as they land, each with files / tests / assumptions / blockers /
 verification, and each committed as a milestone keeping `pnpm verify` green.)*

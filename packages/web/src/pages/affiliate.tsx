@@ -5,6 +5,7 @@ import { type PayoutRequest } from "@partnera/payment-engine";
 import { type PageContext } from "../page";
 import { PageHeader, StatTile, StatusBadge, DefinitionList } from "../components";
 import { money, date, dateTime, num } from "../format";
+import { renderAffiliateContent } from "./creator";
 
 /** Affiliate Portal — consumes the same services, scoped to the affiliate. */
 export async function renderAffiliate(pc: PageContext): Promise<ReactNode> {
@@ -44,6 +45,8 @@ export async function renderAffiliate(pc: PageContext): Promise<ReactNode> {
       return earnings(pc, affiliateId, null, "Commission history");
     case "payouts":
       return payouts(pc, affiliateId);
+    case "content":
+      return renderAffiliateContent(pc);
     case "notifications":
       return notifications(pc);
     case "settings":
