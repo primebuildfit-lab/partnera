@@ -27,7 +27,9 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [string]$Command = "help"
+    [string]$Command = "help",
+    [Parameter(Position = 1)]
+    [string]$Arg = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -215,6 +217,31 @@ try {
             Stop-App
             if (Test-Path $DataFile) { Remove-Item $DataFile -Force; Write-Host "Local data deleted. Next start seeds a fresh demo." -ForegroundColor Green }
             else { Write-Host "No data to reset." }
+        }
+        "backup"          {
+            if (-not (Test-Path $DataFile)) { Write-Host "No data file to back up yet." -ForegroundColor Yellow }
+            else {
+                $BackupDir = Join-Path $DataDir "backups"
+                New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+                $Stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+                $Dest = Join-Path $BackupDir "data-$Stamp.json"
+                Copy-Item $DataFile $Dest -Force
+                Write-Host "Backed up to: $Dest" -ForegroundColor Green
+            }
+        }
+        "restore"         {
+            $BackupDir = Join-Path $DataDir "backups"
+            if (-not (Test-Path $BackupDir)) { Write-Host "No backups found in $BackupDir" -ForegroundColor Yellow }
+            else {
+                $Src = if ($Arg) { Join-Path $BackupDir $Arg } else { Get-ChildItem $BackupDir -Filter "data-*.json" | Sort-Object Name -Descending | Select-Object -First 1 | ForEach-Object { $_.FullName } }
+                if (-not $Src -or -not (Test-Path $Src)) { Write-Host "No matching backup found." -ForegroundColor Yellow }
+                else {
+                    Stop-App
+                    Copy-Item $Src $DataFile -Force
+                    Write-Host "Restored from: $Src" -ForegroundColor Green
+                    Write-Host "Start with: .\scripts\partnera.ps1 open"
+                }
+            }
         }
         "install-desktop" { Install-Desktop }
         "remove-desktop"  { Remove-Desktop }

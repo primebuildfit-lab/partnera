@@ -9,6 +9,7 @@ import {
   type Submission,
   computeFee,
   paymentForCategory,
+  PILOT_CHECKLIST_ITEMS,
 } from "@partnera/creator-marketplace";
 import { Money } from "@partnera/core";
 import { type PageContext } from "../page";
@@ -266,6 +267,8 @@ export async function renderBusinessCreators(pc: PageContext): Promise<ReactNode
       return businessProgramConfig(pc);
     case sub === "setup":
       return businessSetupGuide(pc);
+    case sub === "pilot":
+      return businessPilotChecklist(pc);
     case sub === "opportunities":
       return businessOpportunities(pc);
     case sub === "submissions":
@@ -411,7 +414,6 @@ function businessOpportunities(pc: PageContext): ReactNode {
 function businessReviewQueue(pc: PageContext): ReactNode {
   const svc = pc.services.creator;
   const queue = svc.reviewQueue(pc.request);
-  const feeBps = 300; // provisional business-paid default (2–4% range)
   return (
     <>
       <PageHeader title="Review workspace" description="Two advisory AI scores; you confirm the category. Your program config sets the payment — AI never sets money, never moves money." />
@@ -425,6 +427,7 @@ function businessReviewQueue(pc: PageContext): ReactNode {
             const v = svc.versionsFor(pc.request, s.id).at(-1);
             const rec = svc.recommendPreview(pc.request, s.id);
             const scheme = svc.schemeForSubmission(pc.request, s.id);
+            const feeBps = svc.feeConfigForSubmission(pc.request, s.id).rateBps;
             return (
               <Card key={s.id} title={svc.creatorDisplayName(s.creatorId)}>
                 <div className="pt-grid cols-2">
@@ -497,7 +500,7 @@ function businessReviewQueue(pc: PageContext): ReactNode {
 }
 
 /** The four-line money breakdown every simulated payment shows (Part 10). */
-function moneyBreakdown(grossJson: CreatorPayment["gross"], feeBps = 300): ReactNode {
+function moneyBreakdown(grossJson: CreatorPayment["gross"], feeBps: number): ReactNode {
   const gross = Money.fromJSON(grossJson);
   const fee = computeFee(gross, { rateBps: feeBps, payer: "business", configVersion: 1, snapshotAt: new Date() });
   return (
@@ -528,7 +531,7 @@ function businessPayments(pc: PageContext): ReactNode {
             <Card key={p.id} title={svc.creatorDisplayName(p.creatorId)}>
               <div className="pt-grid cols-2">
                 <div>
-                  {moneyBreakdown(p.gross)}
+                  {moneyBreakdown(p.gross, svc.feeConfigForSubmission(pc.request, p.submissionId).rateBps)}
                   <div style={{ marginTop: tokens.space.sm, fontSize: tokens.font.size.sm, color: tokens.color.textMuted }}>
                     Reason: {titleCase(p.reason)} · Status: <StatusBadge status={p.status} />
                   </div>
@@ -690,10 +693,51 @@ function businessProgramConfig(pc: PageContext): ReactNode {
             <Button type="submit" size="sm" style={{ alignSelf: "flex-end" }}>Save budget</Button>
           </form>
         </Card>
-        <Card title="Financial exposure before accepting more">
-          <p style={{ color: tokens.color.textMuted }}>Over-budget or over-capacity content is never auto-rejected — it enters a waiting queue so you can decide.</p>
+        <Card title="Platform fee">
+          {(() => {
+            const fee = svc.getFeeConfig(pc.request, programId);
+            return (
+              <>
+                <DefinitionList items={[
+                  { term: "Partnera fee", value: `${(fee.rateBps / 100).toFixed(2)}%` },
+                  { term: "Paid by", value: titleCase(fee.payer) },
+                ]} />
+                <form method="post" action={`/business/creators/config/fee/${programId}`} className="pt-row" style={{ gap: tokens.space.xs, marginTop: tokens.space.md, alignItems: "flex-end" }}>
+                  <Field label="Fee % (2–4)" htmlFor="fee"><Input id="fee" name="feePct" defaultValue={(fee.rateBps / 100).toFixed(2)} style={{ width: 90 }} /></Field>
+                  <Button type="submit" size="sm">Save fee</Button>
+                </form>
+                <p style={{ color: tokens.color.textMuted, fontSize: tokens.font.size.xs, marginTop: tokens.space.xs }}>Separate from creator pay. Locked into each job's snapshot when a creator accepts terms.</p>
+              </>
+            );
+          })()}
         </Card>
       </div>
+    </>
+  );
+}
+
+function businessPilotChecklist(pc: PageContext): ReactNode {
+  const svc = pc.services.creator;
+  const done = svc.getPilotChecklist(pc.request);
+  const total = PILOT_CHECKLIST_ITEMS.length;
+  const doneCount = PILOT_CHECKLIST_ITEMS.filter((i) => done[i.key]).length;
+  return (
+    <>
+      <PageHeader title="PrimeBuild pilot checklist" description={`Your operational go-live checklist. Progress is saved and survives restart. ${doneCount}/${total} done.`} actions={<a href="/business/creators" style={{ fontSize: tokens.font.size.sm }}>← Back</a>} />
+      <Flash pc={pc} />
+      <Card title="Checklist">
+        <div className="pt-stack">
+          {PILOT_CHECKLIST_ITEMS.map((item) => {
+            const isDone = !!done[item.key];
+            return (
+              <div key={item.key} className="pt-row" style={{ justifyContent: "space-between", alignItems: "center", gap: tokens.space.md }}>
+                <span style={{ color: isDone ? tokens.color.textMuted : tokens.color.text }}>{isDone ? "✓ " : "○ "}{item.label}</span>
+                <PostButton action={`/business/creators/pilot/${item.key}/${isDone ? "undo" : "done"}`} label={isDone ? "Undo" : "Mark done"} variant={isDone ? "ghost" : "outline"} intent="neutral" />
+              </div>
+            );
+          })}
+        </div>
+      </Card>
     </>
   );
 }

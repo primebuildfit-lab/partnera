@@ -72,6 +72,7 @@ import {
   type LegalStatus,
   type InternalUseStatus,
   type ReviewRecommendation,
+  PILOT_CHECKLIST_ITEMS,
   capacityGate,
   categoryForScore,
   computeExposure,
@@ -220,7 +221,9 @@ export class CreatorService extends ServiceBase {
     const next = transition(APPLICATION_TRANSITIONS, "application", app.status, "accepted");
     if (!next.ok) throw next.error;
 
-    const config = feeConfig ?? CREATOR_MARKETPLACE_DEFAULTS.fee;
+    // Fee comes from the program's persisted, editable setting (not a hardcoded
+    // default) unless the caller supplied one explicitly.
+    const config = feeConfig ?? this.feeConfigForOpportunity(ctx, app.opportunityId);
     const validated = validateFeeConfig(config);
     if (!validated.ok) throw validated.error;
     const feeSnapshot: FeeSnapshot = {
@@ -815,11 +818,39 @@ export class CreatorService extends ServiceBase {
     this.uow.creator.upsertBudget({ programId, tenantId: ctx.tenantId, currency: input.currency, totalMinor: input.totalMinor, reservedMinor: input.reservedMinor ?? "0" });
   }
 
+  /** The program's persisted, editable fee config (falls back to the provisional default). */
+  getFeeConfig(ctx: RequestContext, programId: CreatorProgramId): FeeConfig {
+    const s = this.uow.creator.getFeeSetting(ctx.tenantId, programId);
+    return s ? { rateBps: s.rateBps, payer: s.payer } : CREATOR_MARKETPLACE_DEFAULTS.fee;
+  }
+
+  /** Set the program's platform-fee rate (validated to the approved 2–4% range). */
+  setFeeRate(ctx: RequestContext, programId: CreatorProgramId, rateBps: number, payer: "business" | "creator" = "business"): void {
+    this.require(ctx, "creator_program.manage");
+    const validated = validateFeeConfig({ rateBps, payer });
+    if (!validated.ok) throw validated.error;
+    this.uow.creator.upsertFeeSetting({ programId, tenantId: ctx.tenantId, rateBps, payer, updatedAt: this.clock.now() });
+  }
+
+  /** The persisted fee config that applies to a submission (via its program). */
+  feeConfigForSubmission(ctx: RequestContext, submissionId: SubmissionId): FeeConfig {
+    const programId = this.programForSubmissionId(ctx, submissionId);
+    return programId ? this.getFeeConfig(ctx, programId) : CREATOR_MARKETPLACE_DEFAULTS.fee;
+  }
+
+  private feeConfigForOpportunity(ctx: RequestContext, opportunityId: OpportunityId): FeeConfig {
+    const opp = this.uow.creator.getOpportunity(opportunityId);
+    if (!opp) return CREATOR_MARKETPLACE_DEFAULTS.fee;
+    const camp = this.uow.creator.getCampaign(ctx.tenantId, opp.campaignId);
+    if (!camp) return CREATOR_MARKETPLACE_DEFAULTS.fee;
+    return this.getFeeConfig(ctx, camp.programId);
+  }
+
   /** Derived budget exposure for a program (committed/paid/remaining/projected fee). */
   exposureFor(ctx: RequestContext, programId: CreatorProgramId) {
     this.require(ctx, "creator_program.manage");
     const budget = this.uow.creator.getBudget(ctx.tenantId, programId);
-    const feeBps = CREATOR_MARKETPLACE_DEFAULTS.fee.rateBps;
+    const feeBps = this.getFeeConfig(ctx, programId).rateBps;
     if (!budget) return null;
     let committed = 0n;
     let paid = 0n;
@@ -1015,6 +1046,68 @@ export class CreatorService extends ServiceBase {
   }
   listPlacements() {
     return this.uow.creator.listPlacements();
+  }
+
+  // --- Operational pilot checklist (persisted per business, survives restart) ---
+  getPilotChecklist(ctx: RequestContext): Readonly<Record<string, boolean>> {
+    this.require(ctx, "creator.view");
+    return this.uow.creator.getChecklist(ctx.tenantId, ctx.tenantId)?.items ?? {};
+  }
+
+  setPilotItem(ctx: RequestContext, key: string, done: boolean): void {
+    this.require(ctx, "creator_program.manage");
+    if (!PILOT_CHECKLIST_ITEMS.some((i) => i.key === key)) {
+      throw new ValidationError("Unknown pilot checklist item", { key });
+    }
+    const current = this.uow.creator.getChecklist(ctx.tenantId, ctx.tenantId);
+    const items = { ...(current?.items ?? {}), [key]: done };
+    this.uow.creator.upsertChecklist({ businessId: asId<BusinessId>(ctx.tenantId), tenantId: ctx.tenantId, items, updatedAt: this.clock.now() });
+  }
+
+  /**
+   * Deterministic, read-only integrity check over the tenant's creator records.
+   * Reports issues; never deletes. Surfaced in the admin data-status view (Part 4/7).
+   */
+  integrityCheck(ctx: RequestContext): { ok: boolean; issues: string[]; counts: Record<string, number> } {
+    this.require(ctx, "creator.view");
+    const issues: string[] = [];
+    const programs = this.uow.creator.listPrograms(ctx.tenantId);
+
+    // Duplicate programs by (business, slug).
+    const seenSlug = new Set<string>();
+    for (const p of programs) {
+      const k = `${p.businessId}:${p.slug}`;
+      if (seenSlug.has(k)) issues.push(`Duplicate program slug for business: ${p.slug}`);
+      seenSlug.add(k);
+    }
+    // At most one evaluation scheme per program; categories non-empty; unique keys.
+    for (const p of programs) {
+      const scheme = this.uow.creator.getSchemeForProgram(ctx.tenantId, p.id);
+      if (scheme) {
+        if (scheme.categories.length === 0) issues.push(`Program ${p.slug} has an empty evaluation scheme`);
+        const keys = new Set<string>();
+        for (const c of scheme.categories) {
+          if (keys.has(c.key)) issues.push(`Program ${p.slug} has a duplicate category key: ${c.key}`);
+          keys.add(c.key);
+        }
+      }
+    }
+    // Fee settings must stay within the approved 2–4% range.
+    for (const p of programs) {
+      const fee = this.uow.creator.getFeeSetting(ctx.tenantId, p.id);
+      if (fee && (fee.rateBps < 200 || fee.rateBps > 400)) issues.push(`Program ${p.slug} fee ${fee.rateBps}bps is outside 2–4%`);
+    }
+    // Dispositions must belong to this tenant (cross-tenant leak guard).
+    for (const d of this.uow.creator.listDispositions(ctx.tenantId)) {
+      if (d.tenantId !== ctx.tenantId) issues.push(`Disposition ${d.submissionId} has a foreign tenant`);
+    }
+    return { ok: issues.length === 0, issues, counts: this.uow.creator.recordCounts() };
+  }
+
+  /** Record counts across the creator collections (admin data-status). */
+  recordCounts(ctx: RequestContext): Record<string, number> {
+    this.require(ctx, "creator.view");
+    return this.uow.creator.recordCounts();
   }
 
   private budgetRemainingMinor(ctx: RequestContext, programId: CreatorProgramId, budget: ProgramBudget): bigint {

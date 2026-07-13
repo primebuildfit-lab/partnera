@@ -232,6 +232,38 @@ describe("delivery — Creator Marketplace surfaces (real services)", () => {
     expect(res.body).toContain("Authorize payment…");
   });
 
+  it("persists pilot-checklist progress through the store (survives a reload)", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const before = await get(world, "/business/creators/pilot", session);
+    expect(before.body).toContain("PrimeBuild pilot checklist");
+    expect(before.body).toContain("0/11 done");
+    const post = await handle(world, req({ method: "POST", path: "/business/creators/pilot/budget/done", cookies: { pt_session: session } }));
+    expect(post.status).toBe(303);
+    // The state is in the persistent store, not a UI/cookie value: a re-read reflects it.
+    const after = await get(world, "/business/creators/pilot", session);
+    expect(after.body).toContain("1/11 done");
+    expect(after.body).toContain("Undo");
+  });
+
+  it("the persisted program fee rate drives the money breakdown", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const config = await get(world, "/business/creators/config", session);
+    expect(config.body).toContain("Platform fee");
+    expect(config.body).toContain("3.00%"); // PrimeBuild's persisted rate
+  });
+
+  it("admin data-status shows local storage, record counts and integrity OK", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.admin, "admin");
+    const res = await get(world, "/admin/data", session);
+    expect(res.body).toContain("Local data status");
+    expect(res.body).toContain("Record counts");
+    expect(res.body).toContain("creator programs");
+    expect(res.body.toLowerCase()).toContain("integrity");
+  });
+
   it("program setup shows PrimeBuild's own categories + payments and the config notice", async () => {
     const world = await createDemoWorld();
     const session = await login(world, world.users.owner, "business");

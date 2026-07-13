@@ -29,6 +29,8 @@ import {
   type PromotedPlacement,
   type PromotionalChannel,
   type SubmissionDisposition,
+  type ProgramFeeSetting,
+  type PilotChecklist,
 } from "@partnera/creator-marketplace";
 import { type CreatorProgramId } from "@partnera/creator-marketplace";
 import { type Collection, type RelationalStore } from "../relational/store";
@@ -72,6 +74,8 @@ export class CreatorRepository {
     private readonly trials: Collection<BusinessTrialState>,
     private readonly channels: Collection<PromotionalChannel>,
     private readonly placements: Collection<PromotedPlacement>,
+    private readonly feeSettings: Collection<ProgramFeeSetting>,
+    private readonly checklists: Collection<PilotChecklist>,
   ) {}
 
   // --- Creator profiles (cross-tenant actors) ---
@@ -353,6 +357,45 @@ export class CreatorRepository {
   }
   listPlacements(): PromotedPlacement[] {
     return this.placements.values();
+  }
+
+  // --- Program fee setting (persisted, editable, validated 2-4%) ---
+  upsertFeeSetting(setting: ProgramFeeSetting): void {
+    this.feeSettings.upsert(setting);
+  }
+  getFeeSetting(tenantId: TenantId, programId: CreatorProgramId): ProgramFeeSetting | undefined {
+    const s = this.feeSettings.get(programId);
+    return s && s.tenantId === tenantId ? s : undefined;
+  }
+
+  // --- Operational pilot checklist (persisted per business) ---
+  upsertChecklist(checklist: PilotChecklist): void {
+    this.checklists.upsert(checklist);
+  }
+  getChecklist(tenantId: TenantId, businessId: string): PilotChecklist | undefined {
+    const c = this.checklists.get(businessId);
+    return c && c.tenantId === tenantId ? c : undefined;
+  }
+
+  /** Row counts per creator collection — for the admin data-status view. */
+  recordCounts(): Record<string, number> {
+    return {
+      creator_profiles: this.profiles.count(),
+      creator_programs: this.programs.count(),
+      evaluation_schemes: this.schemes.count(),
+      program_capacities: this.capacities.count(),
+      program_budgets: this.budgets.count(),
+      program_fee_settings: this.feeSettings.count(),
+      content_opportunities: this.opportunities.count(),
+      submissions: this.submissions.count(),
+      submission_versions: this.versions.count(),
+      submission_reviews: this.reviews.count(),
+      submission_dispositions: this.dispositions.count(),
+      creator_payments: this.payments.count(),
+      creator_ledger_events: this.ledger.count(),
+      content_assets: this.assets.count(),
+      pilot_checklists: this.checklists.count(),
+    };
   }
 
   // --- Disputes ---

@@ -164,6 +164,46 @@ export interface ProgramCapacity {
   readonly pauseWhenReached: boolean;
 }
 
+/**
+ * Persisted, business-editable platform-fee setting for a program. The fee rate
+ * was previously a hardcoded default; persisting it here makes it a real,
+ * editable record (still validated to the approved 2–4% range) that the
+ * acceptance snapshot, exposure, and UI all read.
+ */
+export interface ProgramFeeSetting {
+  readonly programId: CreatorProgramId;
+  readonly tenantId: TenantId;
+  readonly rateBps: number;
+  readonly payer: "business" | "creator";
+  readonly updatedAt: Date;
+}
+
+/**
+ * Persisted operational pilot checklist for a business. Item completion is stored
+ * (not a UI/cookie value) so progress survives restart.
+ */
+export interface PilotChecklist {
+  readonly businessId: BusinessId;
+  readonly tenantId: TenantId;
+  readonly items: Readonly<Record<string, boolean>>;
+  readonly updatedAt: Date;
+}
+
+/** The fixed set of PrimeBuild operational pilot checklist item keys (Part 6). */
+export const PILOT_CHECKLIST_ITEMS = [
+  { key: "category_payments", label: "Confirm category payments" },
+  { key: "max_accepted", label: "Confirm maximum accepted videos" },
+  { key: "budget", label: "Confirm available budget" },
+  { key: "fee_pct", label: "Confirm platform-fee percentage" },
+  { key: "opportunity", label: "Review active opportunity" },
+  { key: "instructions", label: "Review creator instructions" },
+  { key: "rights", label: "Review content-rights terms" },
+  { key: "sample_submission", label: "Review one sample submission" },
+  { key: "approve_or_queue", label: "Approve or queue it" },
+  { key: "publish_asset", label: "Publish one asset to the affiliate library" },
+  { key: "verify_affiliate", label: "Verify it from the affiliate perspective" },
+] as const;
+
 /** Business-configured budget for a program (committed/paid/remaining are derived). */
 export interface ProgramBudget {
   readonly programId: CreatorProgramId;

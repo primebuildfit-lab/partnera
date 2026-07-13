@@ -24,4 +24,11 @@ export interface PageContext {
   readonly flash?: Flash;
   /** Request cookies, so pages can honour UI preferences (e.g. dismissed checklist). */
   readonly cookies?: Readonly<Record<string, string>>;
+  /** Persistence descriptor for the admin data-status view. */
+  readonly persistence?: {
+    readonly mode: "in-memory" | "local-file";
+    readonly dataFile: string | null;
+    readonly lastSaveAt: Date | null;
+    readonly backupDir: string | null;
+  };
 }

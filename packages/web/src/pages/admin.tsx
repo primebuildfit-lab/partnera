@@ -38,9 +38,57 @@ export async function renderAdmin(pc: PageContext): Promise<ReactNode> {
       return configuration(pc);
     case "audit":
       return audit(pc);
+    case "data":
+      return dataStatus(pc);
     default:
       return <EmptyState title="Not found" />;
   }
+}
+
+/**
+ * Local data-status view (Part 7): where data lives, when it was last saved,
+ * record counts, and a deterministic integrity check. User-facing language; no
+ * secrets or private creator content.
+ */
+function dataStatus(pc: PageContext): ReactNode {
+  const p = pc.persistence;
+  const integrity = pc.services.creator.integrityCheck(pc.request);
+  const counts = integrity.counts;
+  const pilotProgram = pc.services.creator.listPrograms(pc.request).find((x) => x.slug === "creators");
+  return (
+    <>
+      <PageHeader title="Local data status" description="How and where this Partnera install stores its data. Everything is on this machine — no external database or cloud." />
+      <div className="pt-grid cols-4">
+        <StatTile label="Storage" value={p?.mode === "local-file" ? "Local file" : "In-memory"} note={p?.mode === "local-file" ? "Survives restart" : "Test/session only"} />
+        <StatTile label="Last saved" value={p?.lastSaveAt ? dateTime(p.lastSaveAt) : "—"} intent="info" />
+        <StatTile label="Integrity" value={integrity.ok ? "OK" : `${integrity.issues.length} issue(s)`} intent={integrity.ok ? "success" : "danger"} />
+        <StatTile label="PrimeBuild pilot" value={pilotProgram ? "Configured" : "Missing"} intent={pilotProgram ? "success" : "warning"} />
+      </div>
+      <div className="pt-grid cols-2" style={{ marginTop: tokens.space.lg }}>
+        <Card title="Storage details">
+          <DefinitionList items={[
+            { term: "Mode", value: p?.mode === "local-file" ? "Local file (JSON)" : "In-memory (no file)" },
+            { term: "Data file", value: p?.dataFile ?? "—" },
+            { term: "Backups", value: p?.backupDir ? `${p.backupDir} (via launcher backup/restore)` : "—" },
+            { term: "Data version", value: "1" },
+          ]} />
+          {p?.mode === "local-file" && <p style={{ color: tokens.color.textMuted, fontSize: tokens.font.size.xs, marginTop: tokens.space.sm }}>Back up with <code>partnera backup</code>; restore with <code>partnera restore</code> while stopped.</p>}
+        </Card>
+        <Card title="Integrity check">
+          {integrity.ok ? (
+            <Alert intent="success">No inconsistencies found (no duplicate programs/schemes, categories valid, fee in range, no cross-tenant records).</Alert>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: tokens.space.lg, color: tokens.color.text }}>{integrity.issues.map((i, n) => <li key={n}>{i}</li>)}</ul>
+          )}
+        </Card>
+      </div>
+      <div style={{ marginTop: tokens.space.lg }}>
+        <Card title="Record counts">
+          <DefinitionList items={Object.entries(counts).map(([k, v]) => ({ term: k.replace(/_/g, " "), value: String(v) }))} />
+        </Card>
+      </div>
+    </>
+  );
 }
 
 async function overview(pc: PageContext): Promise<ReactNode> {

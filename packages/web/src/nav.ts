@@ -46,6 +46,7 @@ export const BUSINESS_NAV: NavTree = [
     items: [
       { label: "Overview", href: "/business/creators", permission: "creator.view" },
       { label: "Setup guide", href: "/business/creators/setup", permission: "creator_program.manage" },
+      { label: "Pilot checklist", href: "/business/creators/pilot", permission: "creator.view" },
       { label: "Creator Program", href: "/business/creators/config", permission: "creator_program.manage" },
       { label: "Opportunities", href: "/business/creators/opportunities", permission: "content_opportunity.manage" },
       { label: "Reviews", href: "/business/creators/submissions", permission: "submission.review" },
@@ -132,6 +133,7 @@ export const ADMIN_NAV: NavTree = [
     items: [
       { label: "Overview", href: "/admin" },
       { label: "Health", href: "/admin/health", permission: "platform.health.read" },
+      { label: "Data status", href: "/admin/data", permission: "platform.health.read" },
       { label: "Logs", href: "/admin/logs", permission: "platform.health.read" },
     ],
   },

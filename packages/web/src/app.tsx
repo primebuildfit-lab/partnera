@@ -116,6 +116,7 @@ export async function handle(world: DemoWorld, req: WebRequest): Promise<WebResp
     params: {},
     flash: flashFrom(req.query),
     cookies: req.cookies,
+    persistence: world.persistence,
   };
 
   try {
@@ -269,6 +270,17 @@ async function workflow(world: DemoWorld, ctx: WebContext, req: WebRequest): Pro
         const programId = asId<CreatorProgramId>(parts[4]!);
         services.creator.setBudget(request, programId, { totalMinor: String(Math.max(0, Math.round(Number(req.form.totalMajor ?? "0") * 100))), currency: "USD" });
         return back("/business/creators/config", "success", "Program budget updated.");
+      }
+      if (kind === "config" && parts[3] === "fee") {
+        const programId = asId<CreatorProgramId>(parts[4]!);
+        const bps = Math.round(Number(req.form.feePct ?? "3") * 100);
+        services.creator.setFeeRate(request, programId, bps, "business");
+        return back("/business/creators/config", "success", `Platform fee set to ${(bps / 100).toFixed(2)}%.`);
+      }
+      // Operational pilot checklist (persisted; survives restart).
+      if (kind === "pilot" && (action === "done" || action === "undo")) {
+        services.creator.setPilotItem(request, id, action === "done");
+        return back("/business/creators/pilot", "success", "Checklist updated.");
       }
       // First-run checklist dismiss / reopen (UI preference cookie).
       if (kind === "checklist" && id === "off") {

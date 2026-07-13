@@ -52,6 +52,14 @@ export class DemoIds implements IdGenerator {
   }
 }
 
+/** Where and how the app's data is stored (for the admin data-status view). */
+export interface PersistenceInfo {
+  mode: "in-memory" | "local-file";
+  dataFile: string | null;
+  lastSaveAt: Date | null;
+  backupDir: string | null;
+}
+
 export interface DemoWorld {
   readonly uow: UnitOfWork;
   readonly services: Services;
@@ -60,6 +68,8 @@ export interface DemoWorld {
   readonly authProvider: DevAuthProvider;
   readonly sessionStore: InMemorySessionStore;
   readonly users: Readonly<Record<"owner" | "finance" | "affiliate" | "admin" | "creator", string>>;
+  /** Mutable persistence descriptor; the local runtime updates it on save. */
+  readonly persistence: PersistenceInfo;
 }
 
 export interface DemoRuntime {
@@ -98,6 +108,7 @@ export function buildDemoRuntime(opts?: { clock?: Clock; ids?: IdGenerator }): D
     authProvider,
     sessionStore,
     users: USERS,
+    persistence: { mode: "in-memory", dataFile: null, lastSaveAt: null, backupDir: null },
   };
 
   const seed = async (): Promise<void> => {
@@ -309,6 +320,8 @@ export function buildDemoRuntime(opts?: { clock?: Clock; ids?: IdGenerator }): D
     // Budget deliberately tight so the pilot demonstrates a waiting-for-budget item.
     svc.creator.setBudget(owner, programId2, { totalMinor: "17000", currency: "USD" }); // $170
     svc.creator.setCapacity(owner, programId2, { maxAccepted: 10, pauseWhenReached: true });
+    // Persist PrimeBuild's platform-fee rate (3%) as an editable record, not a default.
+    svc.creator.setFeeRate(owner, programId2, 300, "business");
 
     // Opportunity C — reviewed "Excellent" but over budget → waiting_for_budget.
     const oppC = svc.creator.createOpportunity(owner, { campaignId, title: "Testimonial (premium)", description: "Authentic testimonial.", eligibility: "open", deliverables: [{ format: "testimonial", paymentMinor: "3500", currency: "USD", minDurationSec: 15, requiresAudio: true, language: "en" }] });

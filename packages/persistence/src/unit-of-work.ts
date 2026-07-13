@@ -41,6 +41,8 @@ import {
   type PromotedPlacement,
   type PromotionalChannel,
   type SubmissionDisposition,
+  type ProgramFeeSetting,
+  type PilotChecklist,
 } from "@partnera/creator-marketplace";
 import { RelationalStore } from "./relational/store";
 import { AuditRepository } from "./repositories/audit";
@@ -267,6 +269,8 @@ export class UnitOfWork {
     const businessTrials = store.define<BusinessTrialState>("business_trials", { pk: (t) => t.businessId });
     const promotionalChannels = store.define<PromotionalChannel>("promotional_channels", { pk: (c) => c.id });
     const promotedPlacements = store.define<PromotedPlacement>("promoted_placements", { pk: (p) => p.id });
+    const programFeeSettings = store.define<ProgramFeeSetting>("program_fee_settings", { pk: (s) => s.programId });
+    const pilotChecklists = store.define<PilotChecklist>("pilot_checklists", { pk: (c) => c.businessId });
     this.creator = new CreatorRepository(
       store,
       creatorProfiles,
@@ -293,6 +297,8 @@ export class UnitOfWork {
       businessTrials,
       promotionalChannels,
       promotedPlacements,
+      programFeeSettings,
+      pilotChecklists,
     );
 
     // Seed platform-managed system roles so authorization works out of the box.

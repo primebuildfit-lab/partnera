@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { SystemClock, UuidIdGenerator } from "@partnera/core";
 import { deserializeStore, serializeStore } from "@partnera/persistence";
 import { buildDemoRuntime, type DemoWorld } from "./demo";
@@ -26,12 +26,19 @@ export interface LocalWorld {
 export async function createLocalWorld(dataFile: string): Promise<LocalWorld> {
   const runtime = buildDemoRuntime({ clock: new SystemClock(), ids: new UuidIdGenerator() });
   const store = runtime.world.uow.store;
+  const backupDir = join(dirname(dataFile), "backups");
+
+  // Advertise the durable-storage descriptor for the admin data-status view.
+  runtime.world.persistence.mode = "local-file";
+  runtime.world.persistence.dataFile = dataFile;
+  runtime.world.persistence.backupDir = backupDir;
 
   const save = (): void => {
     mkdirSync(dirname(dataFile), { recursive: true });
     const tmp = `${dataFile}.tmp`;
     writeFileSync(tmp, serializeStore(store), "utf8");
     renameSync(tmp, dataFile); // atomic replace — never leaves a half-written file
+    runtime.world.persistence.lastSaveAt = new Date();
   };
 
   let firstRun = false;

@@ -64,5 +64,16 @@ case "${1:-help}" in
   update)  wr=0; running_pid >/dev/null && wr=1; [ $wr -eq 1 ] && do_stop; do_build; echo "Updated."; [ $wr -eq 1 ] && do_start || true ;;
   logs)    [ -f "$LOG_FILE" ] && tail -n 40 "$LOG_FILE" || echo "No logs yet." ;;
   reset)   do_stop; rm -f "$DATA_FILE" && echo "Local data deleted; next start seeds a fresh demo." || echo "No data." ;;
+  backup)
+    if [ ! -f "$DATA_FILE" ]; then echo "No data file to back up yet."; else
+      mkdir -p "$DATA_DIR/backups"
+      DEST="$DATA_DIR/backups/data-$(date +%Y%m%d-%H%M%S).json"
+      cp "$DATA_FILE" "$DEST" && echo "Backed up to: $DEST"
+    fi ;;
+  restore)
+    if [ -n "${2:-}" ]; then SRC="$DATA_DIR/backups/$2"; else SRC="$(ls -1t "$DATA_DIR"/backups/data-*.json 2>/dev/null | head -1)"; fi
+    if [ -z "$SRC" ] || [ ! -f "$SRC" ]; then echo "No matching backup found in $DATA_DIR/backups"; else
+      do_stop; cp "$SRC" "$DATA_FILE" && echo "Restored from: $SRC" && echo "Start with: ./scripts/partnera.sh open"
+    fi ;;
   *)       echo "Usage: ./scripts/partnera.sh <install|start|stop|restart|status|update|logs|reset|help>" ;;
 esac
