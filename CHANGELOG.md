@@ -2,6 +2,36 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-13 — Fase 5: Shopify Activation (driver Postgres + host + OAuth/webhooks/embedded) (branch)
+
+Deja Partnera lista para que Brian solo cree la Partner app, configure credenciales, despliegue e
+instale. Sin reescribir lógica; engines sin Prisma/Shopify; modo local intacto. `main` intacto.
+
+### Added
+- **Driver Postgres real** (`@partnera/persistence`): `SqlStore` write-through tras el puerto
+  `SqlClient` (subclase de `RelationalStore`; UnitOfWork/repos sin cambios). `InMemorySqlClient`
+  (tests) + `postgresDriver()`; `PgSqlClient` = plantilla de deploy. La **contract suite compartida
+  corre sobre memoria Y Postgres**; hydrate + UoW-Postgres isolation probados.
+- **Puertos Shopify** (`@partnera/shopify`): `ShopifyApiPort`+`FakeShopifyApi`, `SessionTokenVerifier`+
+  `Fake`, OAuth (`buildInstallUrl`/`newOAuthState`/`verifyState`/`parseCallback`).
+- **Host handlers** (`@partnera/web/shopify-host.ts`, puros y testeados): `beginInstall`,
+  `handleCallback` (HMAC+state+token-exchange+provisión idempotente+registro webhooks), `handleWebhook`
+  (HMAC+idempotencia+dead-letter+uninstall), `resolveEmbeddedContext` (session-token→`RequestContext`),
+  `renderEmbeddedApp` (mínimo). **Montados** en el host productivo (`server.ts`, `shopify-routes.ts`)
+  con cfg por entorno (fakes en local, adaptadores reales en deploy).
+- **Onboarding automático** al instalar (idempotente); **pilot dry-run** (`pilotMigrationPlan`).
+- **Deploy** (Block 9): `Dockerfile`, `railway.json`, `docs/shopify-pilot/DEPLOY.md` (plantillas
+  `RealShopifyApi`/`PgSqlClient`). **Nada se despliega.**
+- Docs: `PHASE5_REPORT.md` (clasificación Bloque 14 + acciones de Brian).
+
+### Tests
+- +9 (driver Postgres/contract-x2/hydrate/UoW-iso) +16 (OAuth/webhooks/session/embedded) +1 (pilot).
+  **230 total, verdes (19 paquetes).**
+
+### Not done — external gates (Brian)
+Partner app + secretos, hosting + Postgres, generación del cliente Prisma (install scripts bloqueados
+aquí), deploy e instalación en la Development Store. Ver `PHASE5_REPORT.md` §13.
+
 ## [Unreleased] — 2026-07-13 — Activation: hosted-persistence groundwork + host seams (branch)
 
 Prepara Partnera para persistencia alojada y host productivo **sin** reescribir lógica de negocio
