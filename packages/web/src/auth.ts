@@ -17,7 +17,7 @@ import { type UnitOfWork } from "@partnera/persistence";
  */
 
 /** Which application surface a session is currently using. */
-export type AppScope = "business" | "affiliate" | "admin" | "creator";
+export type AppScope = "business" | "affiliate" | "admin" | "creator" | "internal";
 
 /** A minimal, transport-agnostic session. A real provider issues/validates these. */
 export interface WebSession {

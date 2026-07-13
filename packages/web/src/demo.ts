@@ -356,6 +356,21 @@ export function buildDemoRuntime(opts?: { clock?: Clock; ids?: IdGenerator; stor
     uow.creator.upsertTrial({ businessId: tenantId, planKey: "pro", state: "active", startedAt: clock.now(), trialEndsAt: new Date(clock.now().getTime() + 150 * 24 * 60 * 60 * 1000) });
     uow.creator.createChannel({ id: asId<PromotionalChannelId>("chan_house"), tenantId: null, kind: "house_promotion", name: "Partnera House", active: true, createdAt: clock.now() });
     uow.creator.createPlacement({ id: asId<PlacementId>("place_1"), channelId: asId<PromotionalChannelId>("chan_house"), tenantId: null, subjectType: "business", subjectId: tenantId, priority: 1, startAt: clock.now(), endAt: new Date(clock.now().getTime() + 30 * 24 * 60 * 60 * 1000), disclosure: "Promoted placement — Partnera house promotion (no paid media).", status: "active", createdAt: clock.now() });
+
+    // --- Internal OS: two separate money books + alerts (SIMULATED, no real money) ---
+    const usdJson = (major: string) => ({ currency: "USD", minorUnits: String(Math.round(Number(major) * 100)) });
+    const now = clock.now();
+    // Bank A — Partnera Revenue (membership fees + platform fees Partnera earned).
+    uow.platform.appendRevenue({ id: asId("rev_1"), type: "revenue.recognized", source: "membership", amount: usdJson("299.00"), occurredAt: now, correlationId: "seed", businessId: tenantId, planKey: "pro", country: "US" } as never);
+    uow.platform.appendRevenue({ id: asId("rev_2"), type: "revenue.recognized", source: "platform_fee", amount: usdJson("1.05"), occurredAt: now, correlationId: "seed", businessId: tenantId } as never);
+    uow.platform.appendRevenue({ id: asId("rev_3"), type: "revenue.reserved", amount: usdJson("50.00"), reason: "operating reserve", occurredAt: now, correlationId: "seed" } as never);
+    // Bank B — Vault (PrimeBuild's deposited content budget; committed to a job; a payout).
+    uow.platform.appendVault({ id: asId("va_1"), businessId: tenantId, type: "vault.deposited", amount: usdJson("1000.00"), occurredAt: now, correlationId: "seed" } as never);
+    uow.platform.appendVault({ id: asId("va_2"), businessId: tenantId, type: "vault.committed", amount: usdJson("150.00"), toward: "creator-order", occurredAt: now, correlationId: "seed" } as never);
+    uow.platform.appendVault({ id: asId("va_3"), businessId: tenantId, type: "vault.paid_out", amount: usdJson("35.00"), reference: "SIMULATED", occurredAt: now, correlationId: "seed" } as never);
+    // Alerts.
+    uow.platform.upsertAlert({ id: "al_1", severity: "warning", category: "capacity", title: "Order 'Testimonial (premium)' waiting for budget", entityRef: tenantId, status: "new", suggestedAction: "Increase program budget or promote from queue", createdAt: now, updatedAt: now });
+    uow.platform.upsertAlert({ id: "al_2", severity: "info", category: "integration", title: "Postgres alojado no conectado (modo local)", entityRef: null, status: "acknowledged", suggestedAction: "Activar en deploy", createdAt: now, updatedAt: now });
   };
 
   return { world, seed };

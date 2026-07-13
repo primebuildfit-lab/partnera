@@ -19,6 +19,7 @@
     { "path": "../extension-engine" },
     { "path": "../platform" },
     { "path": "../creator-marketplace" },
-    { "path": "../shopify" }
+    { "path": "../shopify" },
+    { "path": "../platform-finance" }
   ]
 }

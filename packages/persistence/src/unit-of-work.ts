@@ -52,6 +52,8 @@ import {
   type WebhookEvent,
 } from "@partnera/shopify";
 import { ShopifyRepository } from "./repositories/shopify";
+import { type RevenueEvent, type VaultEvent } from "@partnera/platform-finance";
+import { PlatformRepository, type PlatformAlertRow } from "./repositories/platform";
 import { RelationalStore } from "./relational/store";
 import { AuditRepository } from "./repositories/audit";
 import { CreatorRepository } from "./repositories/creator";
@@ -95,6 +97,7 @@ export class UnitOfWork {
   readonly audit: AuditRepository;
   readonly idempotency: IdempotencyRepository;
   readonly shopify: ShopifyRepository;
+  readonly platform: PlatformRepository;
   readonly creator: CreatorRepository;
 
   constructor(store: RelationalStore = new RelationalStore()) {
@@ -329,6 +332,12 @@ export class UnitOfWork {
       onboardingStates,
       storageConnections,
     );
+
+    // --- Platform Internal OS: two separate append-only money books + alerts ---
+    const revenueEvents = store.define<RevenueEvent>("revenue_events", { pk: (e) => e.id, appendOnly: true });
+    const vaultEvents = store.define<VaultEvent>("vault_events", { pk: (e) => e.id, appendOnly: true });
+    const platformAlerts = store.define<PlatformAlertRow>("platform_alerts", { pk: (a) => a.id });
+    this.platform = new PlatformRepository(revenueEvents, vaultEvents, platformAlerts);
 
     // Seed platform-managed system roles so authorization works out of the box.
     this.identity.seedSystemRoles();

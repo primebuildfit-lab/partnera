@@ -13,6 +13,7 @@
     { "path": "../core" },
     { "path": "../creator-marketplace" },
     { "path": "../shopify" },
+    { "path": "../platform-finance" },
     { "path": "../auth" },
     { "path": "../offer-engine" },
     { "path": "../tracking-engine" },

@@ -63,6 +63,10 @@ export class IdentityRepository {
   listBusinessesForOrganization(organizationId: OrganizationId): Business[] {
     return this.businesses.find((b) => b.organizationId === organizationId);
   }
+  /** Platform-wide list of businesses (Internal OS / operator use only). */
+  listBusinesses(): Business[] {
+    return this.businesses.values();
+  }
 
   // --- Memberships ---
   createMembership(membership: Membership): void {

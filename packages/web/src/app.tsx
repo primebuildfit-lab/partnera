@@ -11,6 +11,7 @@ import { renderBusiness } from "./pages/business";
 import { renderAffiliate } from "./pages/affiliate";
 import { renderAdmin } from "./pages/admin";
 import { renderCreator } from "./pages/creator";
+import { renderInternal, internalAccessDenied } from "./pages/internal";
 import { loginPage } from "./pages/login";
 import { ICON_PNG_BASE64 } from "./brand-icon";
 import { healthReport, readyReport } from "./observability";
@@ -135,6 +136,15 @@ export async function handle(world: DemoWorld, req: WebRequest): Promise<WebResp
   };
 
   try {
+    // Partnera Internal OS — total separation (§2): own layout, own guard.
+    // Deny-by-default: ONLY platform operators; business/creator/affiliate rejected.
+    if (scope === "internal") {
+      if (!ctx.session.isPlatformOperator) {
+        return html(403, renderDocument(internalAccessDenied(), { title: "Access denied" }));
+      }
+      const content = await renderInternal(pc);
+      return html(200, renderDocument(content, { title: "Partnera Internal OS" }));
+    }
     const content = await renderScope(scope, pc);
     return html(
       200,
@@ -160,6 +170,8 @@ async function renderScope(scope: AppScope, pc: PageContext) {
       return renderAdmin(pc);
     case "creator":
       return renderCreator(pc);
+    case "internal":
+      return renderInternal(pc); // (also guarded + rendered separately in handle)
   }
 }
 
@@ -378,6 +390,7 @@ function parseConfigValue(raw: string): unknown {
 }
 
 function scopeFromPath(path: string): AppScope {
+  if (path.startsWith("/internal")) return "internal";
   if (path.startsWith("/affiliate")) return "affiliate";
   if (path.startsWith("/admin")) return "admin";
   if (path.startsWith("/creator")) return "creator";
@@ -394,6 +407,8 @@ function titleFor(scope: AppScope): string {
       return "Creator Portal";
     case "admin":
       return "Admin Console";
+    case "internal":
+      return "Partnera Internal OS";
   }
 }
 

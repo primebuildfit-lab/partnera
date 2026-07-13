@@ -168,5 +168,7 @@ export function navFor(scope: AppScope): NavTree {
       return ADMIN_NAV;
     case "creator":
       return CREATOR_NAV;
+    case "internal":
+      return []; // Internal OS ships its own dedicated navigation (pages/internal.tsx)
   }
 }

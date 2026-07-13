@@ -37,7 +37,8 @@
     "@partnera/ui": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@partnera/shopify": "workspace:*"
+    "@partnera/shopify": "workspace:*",
+    "@partnera/platform-finance": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

@@ -30,6 +30,7 @@
     "@partnera/extension-engine": "workspace:*",
     "@partnera/platform": "workspace:*",
     "@partnera/creator-marketplace": "workspace:*",
-    "@partnera/shopify": "workspace:*"
+    "@partnera/shopify": "workspace:*",
+    "@partnera/platform-finance": "workspace:*"
   }
 }

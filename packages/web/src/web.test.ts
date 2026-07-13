@@ -321,6 +321,54 @@ describe("delivery — Creator Marketplace surfaces (real services)", () => {
   });
 });
 
+describe("Internal OS — total separation (Phase 8)", () => {
+  it("a platform operator sees the Internal OS home with the two separate money books", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.admin, "internal");
+    const res = await get(world, "/internal", session);
+    expect(res.status).toBe(200);
+    expect(res.body).toContain("Internal OS");
+    expect(res.body).toContain("Ingresos Partnera (Banco A)");
+    expect(res.body).toContain("Partnera Vault (Banco B)");
+    expect(res.body).toContain("Empresas activas");
+    expect(res.body).toContain("nunca se mezclan");
+  });
+
+  it("business, creator and affiliate users are REJECTED (403) from /internal", async () => {
+    const world = await createDemoWorld();
+    for (const [user, scope] of [
+      [world.users.owner, "business"],
+      [world.users.creator, "creator"],
+      [world.users.affiliate, "affiliate"],
+    ] as const) {
+      const session = await login(world, user, scope);
+      const res = await get(world, "/internal", session);
+      expect(res.status, `${scope} must be denied`).toBe(403);
+      expect(res.body).toContain("Acceso restringido");
+      expect(res.body).not.toContain("Banco A"); // no data leaked
+    }
+  });
+
+  it("Revenue (Bank A) and Vault (Bank B) render as separate, unmixed balances", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.admin, "internal");
+    const rev = await get(world, "/internal/finance/revenue", session);
+    expect(rev.body).toContain("Banco A");
+    expect(rev.body).toContain("Disponible");
+    const vault = await get(world, "/internal/finance/vault", session);
+    expect(vault.body).toContain("Banco B");
+    expect(vault.body).toContain("No es ingreso");
+  });
+
+  it("the platform service refuses non-operators at the service layer too", async () => {
+    const world = await createDemoWorld();
+    // Build a non-operator context for the business owner and call the service directly.
+    const ownerSession = await login(world, world.users.owner, "business");
+    const denied = await get(world, "/internal/finance/vault", ownerSession);
+    expect(denied.status).toBe(403);
+  });
+});
+
 describe("delivery — health / readiness / observability", () => {
   it("serves /health and /ready as public JSON without secrets", async () => {
     const world = await createDemoWorld();

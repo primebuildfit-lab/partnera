@@ -27,4 +27,5 @@ export * from "./repositories/config";
 export * from "./repositories/audit";
 export * from "./repositories/idempotency";
 export * from "./repositories/shopify";
+export * from "./repositories/platform";
 export * from "./repositories/creator";

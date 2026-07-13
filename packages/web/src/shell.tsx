@@ -163,6 +163,8 @@ function titleFor(scope: AppScope): string {
       return "Creator Portal";
     case "admin":
       return "Admin Console";
+    case "internal":
+      return "Partnera Internal OS";
   }
 }
 
