@@ -1,6 +1,7 @@
 import { type PayoutRail } from "@partnera/payment-engine";
 import { type AppDeps } from "../context";
 import { AuditService, ConfigurationService, NotificationService } from "./admin";
+import { CreatorService } from "./creator";
 import { FraudService } from "./fraud";
 import { LedgerService } from "./ledger";
 import { OfferService } from "./offer";
@@ -17,6 +18,7 @@ export * from "./payment";
 export * from "./fraud";
 export * from "./admin";
 export * from "./query";
+export * from "./creator";
 
 /** The full set of application services, constructed over one set of dependencies. */
 export interface Services {
@@ -30,6 +32,7 @@ export interface Services {
   readonly configuration: ConfigurationService;
   readonly audit: AuditService;
   readonly query: QueryService;
+  readonly creator: CreatorService;
 }
 
 /** Build every application service from shared dependencies (and an optional payout rail). */
@@ -45,5 +48,6 @@ export function createServices(deps: AppDeps, rail?: PayoutRail): Services {
     configuration: new ConfigurationService(deps),
     audit: new AuditService(deps),
     query: new QueryService(deps),
+    creator: new CreatorService(deps),
   };
 }

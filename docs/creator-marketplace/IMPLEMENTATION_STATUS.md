@@ -51,8 +51,8 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
 | P1 | Shared types & configuration | ✅ |
 | P2 | Domain engines & state machines | ✅ |
 | P3 | Persistence & tenant isolation | ✅ |
-| P4 | Application services | ⬜ |
-| P5 | Creator Portal (UI) | ⬜ |
+| P4 | Application services | ✅ |
+| P5 | Creator Portal (UI) | 🟡 |
 | P6 | Business Creator Dashboard (UI) | ⬜ |
 | P7 | Platform Admin & moderation (UI) | ⬜ |
 | P8 | Content library & affiliate access | ⬜ |
@@ -95,6 +95,32 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
 - **Assumptions:** creator money is a distinct append-only stream (same discipline as the
   ledger; mirrors payment-engine's payout stream) — documented in P0 reconciliation.
 - **Blockers:** none. **Verification:** 18 packages, 140 tests, `pnpm verify` exit 0.
+
+### P3 ✅ Persistence & tenant isolation
+- **Files:** `persistence/src/repositories/creator.ts` (`CreatorRepository`), wired into
+  `unit-of-work.ts` (16 new collections; append-only versions/reviews/creator-ledger;
+  unique constraints for profile-per-user, tenant+slug, opp+creator, asset-license),
+  exported from `index.ts`.
+- **Tests:** `creator.test.ts` (4) — tenant scoping, append-only rejection, guarded money
+  append (illegal-first + legal chain), durable snapshot round-trip (dates + money intact).
+- **Assumptions:** creator profiles cross-tenant; business records tenant-scoped.
+- **Blockers:** none. **Verification:** workspace 144 tests green.
+
+### P4 ✅ Application services
+- **Files:** `application/src/services/creator.ts` (`CreatorService`, reuses `ServiceBase`);
+  wired into `createServices`/`Services`. Extended `auth` permission catalog (23 creator
+  keys) + roles (business_owner, finance, affiliate, new content_reviewer + creator roles).
+  Covers: registerProfile, discover, apply, acceptTerms (fee snapshot lock), submit,
+  runAIReview (mock, advisory), decide (approve/revision/reject with scoring + mandatory
+  gate), authorizePayment (SoD, fee from snapshot), executePayout (SIMULATED), publishToLibrary,
+  createRankRule, resolveAffiliateAccess, myBalances. Business actions = tenant RBAC; creator
+  self-actions = identity-ownership authorization (D-316).
+- **Tests:** `creator-spine.test.ts` (5) — full end-to-end money spine; money-never-before-
+  approval; SoD (approver ≠ authorizer); mandatory-gate blocks approval; RBAC denial; tenant
+  isolation. Plus AI-never-authorizes and fee math asserted in the flow.
+- **Assumptions:** payer default business (creator keeps full gross); SoD = approver ≠
+  authorizer; execute is a separate permission. **Blockers:** real payout provider (🔒 CM14).
+- **Verification:** 24 files, 149 tests, `pnpm verify` exit 0.
 
 *(Phases below are appended as they land, each with files / tests / assumptions / blockers /
 verification, and each committed as a milestone keeping `pnpm verify` green.)*

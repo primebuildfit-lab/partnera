@@ -95,6 +95,27 @@ export const SYSTEM_ROLES: readonly SystemRoleTemplate[] = [
       "apikeys.manage",
       "flags.manage",
       "audit.read",
+      // Creator Marketplace — full authority within the tenant.
+      "creator.view",
+      "creator.invite",
+      "creator_program.manage",
+      "creator_page.manage",
+      "content_opportunity.manage",
+      "content_campaign.manage",
+      "deliverable.define",
+      "application.manage",
+      "submission.review",
+      "submission.approve",
+      "submission.reject",
+      "submission.request_revision",
+      "review.override",
+      "content_asset.manage",
+      "content_license.manage",
+      "rank_unlock.manage",
+      "affiliate_content.view",
+      "creator_payment.authorize",
+      "creator_payment.execute",
+      "dispute.handle",
     ],
   },
   {
@@ -166,7 +187,35 @@ export const SYSTEM_ROLES: readonly SystemRoleTemplate[] = [
       "analytics.read",
       "reports.export",
       "audit.read",
+      // Creator payments: authorize + execute (separated from creative review).
+      "creator_payment.authorize",
+      "creator_payment.execute",
     ],
+  },
+  {
+    key: "content_reviewer",
+    name: "Content Reviewer",
+    scopeLevel: "business",
+    // A delegated reviewer: reviews and requests revisions; approval is bounded by
+    // configuration. Cannot authorize payment (separation of duties).
+    permissions: [
+      "creator.view",
+      "content_opportunity.manage",
+      "submission.review",
+      "submission.request_revision",
+      "submission.approve",
+      "submission.reject",
+      "affiliate_content.view",
+      "analytics.read",
+    ],
+  },
+  {
+    key: "creator",
+    name: "Creator",
+    scopeLevel: "affiliate",
+    // A creator acts on their own profile, jobs, submissions, and earnings only.
+    // Authorization for own data is by identity ownership, not tenant RBAC.
+    permissions: ["creator.self"],
   },
   {
     key: "support",
@@ -186,7 +235,16 @@ export const SYSTEM_ROLES: readonly SystemRoleTemplate[] = [
     key: "affiliate",
     name: "Affiliate",
     scopeLevel: "affiliate",
-    permissions: ["programs.read", "links.manage", "coupons.manage", "commissions.read", "payouts.request", "payouts.read"],
+    permissions: [
+      "programs.read",
+      "links.manage",
+      "coupons.manage",
+      "commissions.read",
+      "payouts.request",
+      "payouts.read",
+      // View the approved content library (rank-gated at resolution time).
+      "affiliate_content.view",
+    ],
   },
   {
     key: "partner",

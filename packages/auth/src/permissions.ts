@@ -40,6 +40,32 @@ export const PERMISSIONS = {
   analytics: ["analytics.read", "reports.export"],
   settings: ["settings.read", "settings.update", "apikeys.manage", "flags.manage"],
   audit: ["audit.read"],
+  // --- Creator Marketplace (second economic system; creators paid per approved deliverable) ---
+  creator: [
+    "creator.view",
+    "creator.invite",
+    "creator.self", // a creator acting on their own profile/jobs/earnings
+    "creator_program.manage",
+    "creator_page.manage",
+    "content_opportunity.manage",
+    "content_campaign.manage",
+    "deliverable.define",
+    "application.manage",
+    "submission.review",
+    "submission.approve",
+    "submission.reject",
+    "submission.request_revision",
+    "review.override",
+    "content_asset.manage",
+    "content_license.manage",
+    "rank_unlock.manage",
+    "affiliate_content.view",
+    "creator_payment.authorize",
+    "creator_payment.execute",
+    "moderation.handle",
+    "dispute.handle",
+    "fee_config.manage",
+  ],
 } as const satisfies Record<string, readonly PermissionKey[]>;
 
 /** Flat list of every known permission (useful for building custom-role UIs). */
