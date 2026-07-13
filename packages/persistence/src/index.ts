@@ -24,3 +24,4 @@ export * from "./repositories/extension";
 export * from "./repositories/config";
 export * from "./repositories/audit";
 export * from "./repositories/idempotency";
+export * from "./repositories/creator";

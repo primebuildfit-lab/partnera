@@ -50,7 +50,7 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
 | P0 | Reconciliation & baseline | ✅ |
 | P1 | Shared types & configuration | ✅ |
 | P2 | Domain engines & state machines | ✅ |
-| P3 | Persistence & tenant isolation | 🟡 |
+| P3 | Persistence & tenant isolation | ✅ |
 | P4 | Application services | ⬜ |
 | P5 | Creator Portal (UI) | ⬜ |
 | P6 | Business Creator Dashboard (UI) | ⬜ |

@@ -17,6 +17,7 @@
     { "path": "../fraud-engine" },
     { "path": "../notification-engine" },
     { "path": "../extension-engine" },
-    { "path": "../platform" }
+    { "path": "../platform" },
+    { "path": "../creator-marketplace" }
   ]
 }

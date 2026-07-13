@@ -148,6 +148,9 @@ importers:
       '@partnera/core':
         specifier: workspace:*
         version: link:../core
+      '@partnera/creator-marketplace':
+        specifier: workspace:*
+        version: link:../creator-marketplace
       '@partnera/extension-engine':
         specifier: workspace:*
         version: link:../extension-engine

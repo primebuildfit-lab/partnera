@@ -16,8 +16,27 @@ import {
   type NotificationTemplate,
   type QueuedNotification,
 } from "@partnera/notification-engine";
+import {
+  type ContentAsset,
+  type ContentCampaign,
+  type ContentLicense,
+  type ContentOpportunity,
+  type CreatorApplication,
+  type CreatorCompanyRelationship,
+  type CreatorLedgerEvent,
+  type CreatorPayment,
+  type CreatorProfile,
+  type CreatorProgram,
+  type DeliverableRequirement,
+  type Dispute,
+  type RankUnlockRule,
+  type Submission,
+  type SubmissionReview,
+  type SubmissionVersion,
+} from "@partnera/creator-marketplace";
 import { RelationalStore } from "./relational/store";
 import { AuditRepository } from "./repositories/audit";
+import { CreatorRepository } from "./repositories/creator";
 import { ConfigRepository, type ConfigRow, configPk } from "./repositories/config";
 import { ExtensionRepository, type ExtensionRow } from "./repositories/extension";
 import { FraudRepository, type FraudSignalRow, type RiskScoreRow } from "./repositories/fraud";
@@ -57,6 +76,7 @@ export class UnitOfWork {
   readonly config: ConfigRepository;
   readonly audit: AuditRepository;
   readonly idempotency: IdempotencyRepository;
+  readonly creator: CreatorRepository;
 
   constructor(store: RelationalStore = new RelationalStore()) {
     this.store = store;
@@ -177,6 +197,73 @@ export class UnitOfWork {
       appendOnly: true,
     });
     this.idempotency = new IdempotencyRepository(idempotencyKeys);
+
+    // --- Creator Marketplace ---
+    // Business-owned records are tenant-scoped; creator profiles are cross-tenant
+    // actors. Submission versions, reviews, and the creator-payment ledger are
+    // append-only (same money discipline as the commission ledger).
+    const creatorProfiles = store.define<CreatorProfile>("creator_profiles", {
+      pk: (p) => p.id,
+      unique: [{ name: "user", key: (p) => p.userId }],
+    });
+    const creatorRelationships = store.define<CreatorCompanyRelationship>("creator_relationships", {
+      pk: (r) => `${r.creatorId}:${r.businessId}`,
+    });
+    const creatorPrograms = store.define<CreatorProgram>("creator_programs", {
+      pk: (p) => p.id,
+      unique: [{ name: "tenant_slug", key: (p) => `${p.tenantId}:${p.slug}` }],
+    });
+    const contentCampaigns = store.define<ContentCampaign>("content_campaigns", { pk: (c) => c.id });
+    const contentOpportunities = store.define<ContentOpportunity>("content_opportunities", {
+      pk: (o) => o.id,
+    });
+    const deliverableRequirements = store.define<DeliverableRequirement>("deliverable_requirements", {
+      pk: (d) => d.id,
+    });
+    const creatorApplications = store.define<CreatorApplication>("creator_applications", {
+      pk: (a) => a.id,
+      unique: [{ name: "opp_creator", key: (a) => `${a.opportunityId}:${a.creatorId}` }],
+    });
+    const submissions = store.define<Submission>("submissions", { pk: (s) => s.id });
+    const submissionVersions = store.define<SubmissionVersion>("submission_versions", {
+      pk: (v) => v.id,
+      appendOnly: true,
+    });
+    const submissionReviews = store.define<SubmissionReview>("submission_reviews", {
+      pk: (r) => r.id,
+      appendOnly: true,
+    });
+    const contentAssets = store.define<ContentAsset>("content_assets", { pk: (a) => a.id });
+    const contentLicenses = store.define<ContentLicense>("content_licenses", {
+      pk: (l) => l.id,
+      unique: [{ name: "asset", key: (l) => l.assetId }],
+    });
+    const rankUnlockRules = store.define<RankUnlockRule>("rank_unlock_rules", { pk: (r) => r.id });
+    const creatorPayments = store.define<CreatorPayment>("creator_payments", { pk: (p) => p.id });
+    const creatorLedgerEvents = store.define<CreatorLedgerEvent>("creator_ledger_events", {
+      pk: (e) => e.id,
+      appendOnly: true,
+    });
+    const creatorDisputes = store.define<Dispute>("creator_disputes", { pk: (d) => d.id });
+    this.creator = new CreatorRepository(
+      store,
+      creatorProfiles,
+      creatorRelationships,
+      creatorPrograms,
+      contentCampaigns,
+      contentOpportunities,
+      deliverableRequirements,
+      creatorApplications,
+      submissions,
+      submissionVersions,
+      submissionReviews,
+      contentAssets,
+      contentLicenses,
+      rankUnlockRules,
+      creatorPayments,
+      creatorLedgerEvents,
+      creatorDisputes,
+    );
 
     // Seed platform-managed system roles so authorization works out of the box.
     this.identity.seedSystemRoles();

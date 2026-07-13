@@ -28,6 +28,7 @@
     "@partnera/fraud-engine": "workspace:*",
     "@partnera/notification-engine": "workspace:*",
     "@partnera/extension-engine": "workspace:*",
-    "@partnera/platform": "workspace:*"
+    "@partnera/platform": "workspace:*",
+    "@partnera/creator-marketplace": "workspace:*"
   }
 }
