@@ -131,6 +131,68 @@ export function DefinitionList({
   );
 }
 
+/**
+ * A no-JS confirmation control. Renders a native <details> disclosure so a
+ * money-moving or distribution-changing action can never be triggered by a
+ * single accidental click: the user opens it, reads the summary, then submits
+ * the real POST inside. Keyboard-operable by default.
+ */
+export function ConfirmButton(props: {
+  action: string;
+  summaryLabel: string;
+  confirmLabel: string;
+  details?: ReactNode;
+  intent?: Intent;
+}): JSX.Element {
+  const intent = props.intent ?? "primary";
+  return (
+    <details className="pt-confirm" style={{ display: "inline-block" }}>
+      <summary
+        style={{
+          cursor: "pointer",
+          listStyle: "none",
+          display: "inline-block",
+          padding: "6px 12px",
+          borderRadius: tokens.radius.md,
+          border: `1px solid var(--pt-color-${intent === "neutral" ? "border" : intent})`,
+          color: `var(--pt-color-${intent === "neutral" ? "text" : intent})`,
+          fontSize: tokens.font.size.sm,
+        }}
+      >
+        {props.summaryLabel}
+      </summary>
+      <div
+        style={{
+          marginTop: tokens.space.sm,
+          padding: tokens.space.md,
+          border: `1px solid ${tokens.color.border}`,
+          borderRadius: tokens.radius.md,
+          background: tokens.color.surface,
+          minWidth: 240,
+        }}
+      >
+        {props.details ? <div style={{ marginBottom: tokens.space.sm }}>{props.details}</div> : null}
+        <form method="post" action={props.action}>
+          <button
+            type="submit"
+            style={{
+              padding: "6px 12px",
+              borderRadius: tokens.radius.md,
+              border: "none",
+              background: `var(--pt-color-${intent})`,
+              color: tokens.color.primaryText,
+              fontSize: tokens.font.size.sm,
+              cursor: "pointer",
+            }}
+          >
+            {props.confirmLabel}
+          </button>
+        </form>
+      </div>
+    </details>
+  );
+}
+
 /** Render children only if the principal holds the permission (else a note). */
 export function PermissionGate(props: {
   ctx: WebContext;

@@ -12,7 +12,7 @@ import {
 } from "@partnera/creator-marketplace";
 import { Money } from "@partnera/core";
 import { type PageContext } from "../page";
-import { PageHeader, StatTile, StatusBadge, DefinitionList } from "../components";
+import { PageHeader, StatTile, StatusBadge, DefinitionList, ConfirmButton } from "../components";
 import { moneyJson, titleCase } from "../format";
 
 /**
@@ -31,6 +31,15 @@ function PostButton(props: { action: string; label: string; intent?: "primary" |
   return (
     <form method="post" action={props.action} style={{ display: "inline" }}>
       <Button type="submit" size="sm" intent={props.intent ?? "primary"} variant={props.variant ?? "solid"}>{props.label}</Button>
+    </form>
+  );
+}
+
+/** A text link that performs a POST (for low-emphasis actions like dismiss/reopen). */
+function PostLink(props: { action: string; label: string }): JSX.Element {
+  return (
+    <form method="post" action={props.action} style={{ display: "inline" }}>
+      <button type="submit" style={{ background: "none", border: "none", padding: 0, color: tokens.color.primary, cursor: "pointer", font: "inherit", textDecoration: "underline" }}>{props.label}</button>
     </form>
   );
 }
@@ -197,7 +206,7 @@ async function creatorEarnings(pc: PageContext): Promise<ReactNode> {
   const balances = await pc.services.creator.myBalances(pc.request);
   return (
     <>
-      <PageHeader title="Earnings" description="Derived from the append-only creator-payment ledger. Payouts are SIMULATED locally." />
+      <PageHeader title="Earnings" description="Your approved payments and payout status. Payouts are SIMULATED in local mode — no real money moves." />
       <Flash pc={pc} />
       {balances.length === 0 ? (
         <EmptyState title="No earnings yet" description="Approved deliverables appear here." />
@@ -255,6 +264,8 @@ export async function renderBusinessCreators(pc: PageContext): Promise<ReactNode
       return businessCreatorDashboard(pc);
     case sub === "config":
       return businessProgramConfig(pc);
+    case sub === "setup":
+      return businessSetupGuide(pc);
     case sub === "opportunities":
       return businessOpportunities(pc);
     case sub === "submissions":
@@ -270,30 +281,101 @@ export async function renderBusinessCreators(pc: PageContext): Promise<ReactNode
   }
 }
 
+interface ChecklistStep { label: string; done: boolean; href: string }
+
+function firstRunChecklist(pc: PageContext, steps: readonly ChecklistStep[]): ReactNode {
+  const dismissed = pc.cookies?.["pt_cm_checklist"] === "off";
+  const doneCount = steps.filter((s) => s.done).length;
+  if (dismissed || doneCount === steps.length) {
+    return (
+      <p style={{ fontSize: tokens.font.size.sm, color: tokens.color.textMuted, marginBottom: tokens.space.md }}>
+        {doneCount === steps.length ? "Setup complete. " : "Setup checklist hidden. "}
+        <PostLink action="/business/creators/checklist/on" label={doneCount === steps.length ? "Show checklist" : "Reopen checklist"} />
+      </p>
+    );
+  }
+  return (
+    <div style={{ marginBottom: tokens.space.lg }}>
+      <Card title={`Get started — ${doneCount}/${steps.length} done`}>
+        <ol style={{ margin: 0, paddingLeft: tokens.space.lg, display: "grid", gap: tokens.space.xs }}>
+          {steps.map((s) => (
+            <li key={s.label} style={{ color: s.done ? tokens.color.textMuted : tokens.color.text }}>
+              {s.done ? "✓ " : "○ "}
+              <a href={s.href}>{s.label}</a>
+            </li>
+          ))}
+        </ol>
+        <div style={{ marginTop: tokens.space.md }}>
+          <PostLink action="/business/creators/checklist/off" label="Dismiss checklist" />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function businessCreatorDashboard(pc: PageContext): ReactNode {
   const svc = pc.services.creator;
   const opps = svc.listOpportunities(pc.request);
+  const openOpps = opps.filter((o) => o.status === "open").length;
   const queue = svc.reviewQueue(pc.request);
+  const canManage = pc.ctx.can("creator_program.manage");
+  const program = canManage ? svc.listPrograms(pc.request)[0] : undefined;
+  const scheme = program ? svc.getScheme(pc.request, program.id as CreatorProgramId) : null;
+  const capacity = program ? svc.getCapacity(pc.request, program.id as CreatorProgramId) : null;
+  const budget = program ? svc.getBudget(pc.request, program.id as CreatorProgramId) : null;
+  const exposure = program && budget ? svc.exposureFor(pc.request, program.id as CreatorProgramId) : null;
+  const dispositions = pc.ctx.can("submission.review") ? svc.listDispositionsView(pc.request) : [];
+  const waitingBudget = dispositions.filter((d) => d.disposition.queueState === "waiting_for_budget").length;
+  const waitingCapacity = dispositions.filter((d) => d.disposition.queueState === "waiting_for_capacity").length;
   const payments = pc.ctx.can("creator_payment.authorize") ? svc.listPayments(pc.request) : [];
   const assets = pc.ctx.can("content_asset.manage") ? svc.listAssets(pc.request) : [];
+  const publishedVersions = new Set(assets.map((a) => a.asset.sourceVersionId));
+  const awaitingPublication = pc.ctx.can("content_asset.manage")
+    ? svc.listSubmissions(pc.request).filter((s) => s.status === "approved" && s.currentVersionId && !publishedVersions.has(s.currentVersionId)).length
+    : 0;
+
+  const schemeConfigured = !!scheme && (scheme.name !== "Default" || scheme.categories.length > 1);
+  const hasPayableCategory = !!scheme && scheme.categories.some((c) => c.payable && BigInt(c.paymentMinor) > 0n);
+  const steps: ChecklistStep[] = [
+    { label: "Review your Creator Program", done: !!program, href: "/business/creators/config" },
+    { label: "Confirm evaluation category names", done: schemeConfigured, href: "/business/creators/config" },
+    { label: "Confirm category payments", done: hasPayableCategory, href: "/business/creators/config" },
+    { label: "Set the content acceptance limit", done: !!capacity, href: "/business/creators/config" },
+    { label: "Set the content budget", done: !!budget, href: "/business/creators/config" },
+    { label: "Publish an opportunity", done: openOpps > 0, href: "/business/creators/opportunities" },
+    { label: "Review the waiting queue", done: waitingBudget + waitingCapacity === 0, href: "/business/creators/queue" },
+    { label: "Review submissions & decide", done: payments.length > 0, href: "/business/creators/submissions" },
+    { label: "Publish approved content to the library", done: assets.length > 0, href: "/business/creators/library" },
+  ];
+
   return (
     <>
-      <PageHeader title="Creator dashboard" description="Recruit creators, review content, pay per approved deliverable, and distribute to affiliates." />
+      <PageHeader title="Creators" description="Recruit creators, review content, pay per approved deliverable, and share approved content with affiliates." actions={<a href="/business/creators/setup" style={{ fontSize: tokens.font.size.sm }}>Open setup guide →</a>} />
       <Flash pc={pc} />
+      {canManage && firstRunChecklist(pc, steps)}
       <div className="pt-grid cols-4">
-        <StatTile label="Opportunities" value={opps.length} />
-        <StatTile label="Awaiting review" value={queue.length} intent="warning" />
-        <StatTile label="Payments" value={payments.length} intent="info" />
-        <StatTile label="Library assets" value={assets.length} intent="success" />
+        <StatTile label="Awaiting review" value={queue.length} intent="warning" note="Submissions to decide" />
+        <StatTile label="Waiting on budget / capacity" value={waitingBudget + waitingCapacity} intent={waitingBudget + waitingCapacity > 0 ? "warning" : "neutral"} note="Never auto-rejected" />
+        <StatTile label="Budget remaining" value={exposure ? moneyJson(exposure.remaining) : budget ? "—" : "Not set"} intent="info" note="Before accepting more" />
+        <StatTile label="Awaiting publication" value={awaitingPublication} intent="success" note="Approved, not yet shared" />
       </div>
-      <div style={{ marginTop: tokens.space.lg }}>
-        <Card title="Quick links">
-          <ul style={{ margin: 0, paddingLeft: tokens.space.lg }}>
-            <li><a href="/business/creators/opportunities">Opportunities</a></li>
-            <li><a href="/business/creators/submissions">Review queue</a> ({queue.length})</li>
-            <li><a href="/business/creators/payments">Creator payments</a></li>
-            <li><a href="/business/creators/library">Content library</a></li>
+      <div className="pt-grid cols-2" style={{ marginTop: tokens.space.lg }}>
+        <Card title="Today's work">
+          <ul style={{ margin: 0, paddingLeft: tokens.space.lg, display: "grid", gap: 4 }}>
+            <li><a href="/business/creators/submissions">Reviews</a> — {queue.length} awaiting</li>
+            <li><a href="/business/creators/queue">Queue</a> — {waitingBudget} on budget, {waitingCapacity} on capacity</li>
+            <li><a href="/business/creators/payments">Payments</a> — {payments.length} payables</li>
+            <li><a href="/business/creators/library">Content Library</a> — {assets.length} shared, {awaitingPublication} to publish</li>
           </ul>
+        </Card>
+        <Card title="Program">
+          <DefinitionList items={[
+            { term: "Opportunities open", value: String(openOpps) },
+            { term: "Categories", value: scheme ? String(scheme.categories.length) : "—" },
+            { term: "Acceptance limit", value: capacity?.maxAccepted != null ? String(capacity.maxAccepted) : "No limit" },
+            { term: "Budget", value: budget ? moneyJson({ currency: budget.currency, minorUnits: budget.totalMinor }) : "Not set" },
+          ]} />
+          <div style={{ marginTop: tokens.space.sm }}><a href="/business/creators/config" style={{ fontSize: tokens.font.size.sm }}>Edit program →</a></div>
         </Card>
       </div>
     </>
@@ -414,30 +496,57 @@ function businessReviewQueue(pc: PageContext): ReactNode {
   );
 }
 
+/** The four-line money breakdown every simulated payment shows (Part 10). */
+function moneyBreakdown(grossJson: CreatorPayment["gross"], feeBps = 300): ReactNode {
+  const gross = Money.fromJSON(grossJson);
+  const fee = computeFee(gross, { rateBps: feeBps, payer: "business", configVersion: 1, snapshotAt: new Date() });
+  return (
+    <DefinitionList items={[
+      { term: "Creator payment", value: moneyJson(gross.toJSON()) },
+      { term: `Partnera fee (${(feeBps / 100).toFixed(0)}%)`, value: moneyJson(fee.fee.toJSON()) },
+      { term: "Business total", value: <strong>{moneyJson(fee.businessCost.toJSON())}</strong> },
+      { term: "Creator receives", value: moneyJson(fee.creatorNet.toJSON()) },
+    ]} />
+  );
+}
+
 function businessPayments(pc: PageContext): ReactNode {
   const svc = pc.services.creator;
   const payments = svc.listPayments(pc.request);
-  const columns: Column<CreatorPayment>[] = [
-    { key: "creator", header: "Creator", render: (p) => svc.creatorDisplayName(p.creatorId) },
-    { key: "gross", header: "Gross", render: (p) => moneyJson(p.gross), align: "right" },
-    { key: "reason", header: "Reason", render: (p) => titleCase(p.reason) },
-    { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
-    {
-      key: "actions", header: "", align: "right",
-      render: (p) => (
-        <div className="pt-row" style={{ justifyContent: "flex-end", gap: tokens.space.xs }}>
-          {p.status === "approved" && pc.ctx.can("creator_payment.authorize") && <PostButton action={`/business/creators/payments/${p.id}/authorize`} label="Authorize" />}
-          {p.status === "scheduled" && pc.ctx.can("creator_payment.execute") && <PostButton action={`/business/creators/payments/${p.id}/execute`} label="Pay (sim)" intent="success" />}
-          {p.status === "paid" && <Badge intent="success">paid (sim)</Badge>}
-        </div>
-      ),
-    },
-  ];
   return (
     <>
-      <PageHeader title="Creator payments" description="Approve ≠ authorize ≠ execute. Fee is snapshot-locked; payouts are SIMULATED locally." />
+      <PageHeader title="Creator payments" description="Confirm each step deliberately. The business pays a separate, transparent Partnera fee. Payouts are SIMULATED — no real money moves." />
       <Flash pc={pc} />
-      <Card title="Payables"><Table columns={columns} rows={payments} getRowKey={(p) => p.id} emptyTitle="No payables yet" /></Card>
+      <Alert intent="info">Every payout here is <strong>simulated</strong> in local mode. No real money moves and no payment provider is connected.</Alert>
+      {payments.length === 0 ? (
+        <div style={{ marginTop: tokens.space.lg }}>
+          <EmptyState title="No creator payments yet" description="Confirm a category in Reviews to create a payable, then authorize it here." />
+        </div>
+      ) : (
+        <div className="pt-stack" style={{ marginTop: tokens.space.lg }}>
+          {payments.map((p) => (
+            <Card key={p.id} title={svc.creatorDisplayName(p.creatorId)}>
+              <div className="pt-grid cols-2">
+                <div>
+                  {moneyBreakdown(p.gross)}
+                  <div style={{ marginTop: tokens.space.sm, fontSize: tokens.font.size.sm, color: tokens.color.textMuted }}>
+                    Reason: {titleCase(p.reason)} · Status: <StatusBadge status={p.status} />
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: tokens.space.sm }}>
+                  {p.status === "approved" && pc.ctx.can("creator_payment.authorize") && (
+                    <ConfirmButton action={`/business/creators/payments/${p.id}/authorize`} summaryLabel="Authorize payment…" confirmLabel={`Confirm — authorize ${moneyJson(p.gross)} (simulated)`} details={<span style={{ fontSize: tokens.font.size.sm, color: tokens.color.textMuted }}>Authorizing recognises the fee and schedules the payout. Simulated — no money moves.</span>} />
+                  )}
+                  {p.status === "scheduled" && pc.ctx.can("creator_payment.execute") && (
+                    <ConfirmButton action={`/business/creators/payments/${p.id}/execute`} summaryLabel="Pay now…" confirmLabel={`Confirm — pay ${moneyJson(p.gross)} (simulated)`} intent="success" details={<span style={{ fontSize: tokens.font.size.sm, color: tokens.color.textMuted }}>Marks the payout paid. Simulated — no money leaves any account.</span>} />
+                  )}
+                  {p.status === "paid" && <Badge intent="success">Paid — simulated (no money moved)</Badge>}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </>
   );
 }
@@ -457,8 +566,8 @@ function businessLibrary(pc: PageContext): ReactNode {
           <div className="pt-stack">
             {unpublished.map((s) => (
               <div key={s.id} className="pt-row" style={{ justifyContent: "space-between" }}>
-                <span>{svc.creatorDisplayName(s.creatorId)} — submission {s.id}</span>
-                {pc.ctx.can("content_asset.manage") && <PostButton action={`/business/creators/submissions/${s.id}/publish`} label="Publish to library" />}
+                <span>{svc.creatorDisplayName(s.creatorId)} — approved content</span>
+                {pc.ctx.can("content_asset.manage") && <ConfirmButton action={`/business/creators/submissions/${s.id}/publish`} summaryLabel="Publish to library…" confirmLabel="Confirm — publish to affiliate library" details={<span style={{ fontSize: tokens.font.size.sm, color: tokens.color.textMuted }}>This makes the content available to affiliates per your rank rules and its license.</span>} />}
               </div>
             ))}
           </div>
@@ -466,7 +575,7 @@ function businessLibrary(pc: PageContext): ReactNode {
       )}
       <div style={{ marginTop: tokens.space.lg }}>
         <Card title="Published assets">
-          {items.length === 0 ? <EmptyState title="No published assets" /> : (
+          {items.length === 0 ? <EmptyState title="No published assets yet" description="Approve content in Reviews, then publish it here to share with affiliates by rank." /> : (
             <div className="pt-stack">
               {items.map(({ asset, license }) => (
                 <Card key={asset.id} title={asset.title}>
@@ -487,6 +596,45 @@ function businessLibrary(pc: PageContext): ReactNode {
 }
 
 const CONFIG_NOTICE = "Payments and evaluation categories are configured by this business. Partnera does not determine creator compensation — it charges a separate, transparent transaction fee (2%–4%).";
+
+function businessSetupGuide(pc: PageContext): ReactNode {
+  const svc = pc.services.creator;
+  const program = svc.listPrograms(pc.request)[0];
+  const scheme = program ? svc.getScheme(pc.request, program.id as CreatorProgramId) : null;
+  const capacity = program ? svc.getCapacity(pc.request, program.id as CreatorProgramId) : null;
+  const budget = program ? svc.getBudget(pc.request, program.id as CreatorProgramId) : null;
+  const openOpps = svc.listOpportunities(pc.request).filter((o) => o.status === "open").length;
+  const steps = [
+    { n: 1, title: "Program identity", done: !!program, body: "Name your creator program and describe what you're looking for.", href: "/business/creators/config", cta: "Open program" },
+    { n: 2, title: "Content types", done: openOpps > 0, body: "Decide which content formats you want (via opportunities).", href: "/business/creators/opportunities", cta: "Opportunities" },
+    { n: 3, title: "Evaluation categories", done: !!scheme && scheme.categories.length > 0, body: "Your own quality tiers (e.g. Rejected / Acceptable / Good / Excellent). One or more — your choice.", href: "/business/creators/config", cta: "Edit categories" },
+    { n: 4, title: "Payments per category", done: !!scheme && scheme.categories.some((c) => c.payable && BigInt(c.paymentMinor) > 0n), body: "Set what each category pays. These are YOUR amounts — Partnera never sets them.", href: "/business/creators/config", cta: "Set payments" },
+    { n: 5, title: "Acceptance limits", done: !!capacity, body: "Cap how much content you'll accept. Over-limit content waits — it's never auto-rejected.", href: "/business/creators/config", cta: "Set limits" },
+    { n: 6, title: "Budget", done: !!budget, body: "Set your content budget. You'll always see exposure before accepting more.", href: "/business/creators/config", cta: "Set budget" },
+    { n: 7, title: "Review method", done: true, body: "Human review with two advisory AI scores. AI recommends a category; you confirm it and your config sets the pay.", href: "/business/creators/submissions", cta: "Reviews" },
+    { n: 8, title: "Content rights", done: true, body: "Usage rights and license duration are set per opportunity.", href: "/business/creators/opportunities", cta: "Opportunities" },
+    { n: 9, title: "Affiliate-library rules", done: true, body: "Approved content is shared with affiliates by rank.", href: "/business/creators/library", cta: "Content Library" },
+    { n: 10, title: "Preview & go", done: openOpps > 0, body: "Publish an opportunity and start receiving submissions.", href: "/business/creators/opportunities", cta: "Publish" },
+  ];
+  const done = steps.filter((s) => s.done).length;
+  return (
+    <>
+      <PageHeader title="Creator Program setup" description={`A quick guided path to a working program. ${done}/${steps.length} steps done.`} actions={<a href="/business/creators" style={{ fontSize: tokens.font.size.sm }}>← Back to Creators</a>} />
+      <Flash pc={pc} />
+      <Alert intent="info">{CONFIG_NOTICE}</Alert>
+      <div className="pt-stack" style={{ marginTop: tokens.space.lg }}>
+        {steps.map((s) => (
+          <Card key={s.n} title={`${s.done ? "✓" : s.n}. ${s.title}`}>
+            <div className="pt-row" style={{ justifyContent: "space-between", alignItems: "center", gap: tokens.space.md, flexWrap: "wrap" }}>
+              <p style={{ margin: 0, color: tokens.color.textMuted, maxWidth: 560 }}>{s.body}</p>
+              <a href={s.href}><Button size="sm" variant={s.done ? "outline" : "solid"}>{s.cta}</Button></a>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </>
+  );
+}
 
 function businessProgramConfig(pc: PageContext): ReactNode {
   const svc = pc.services.creator;

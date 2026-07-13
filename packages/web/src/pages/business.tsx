@@ -369,7 +369,7 @@ async function commissions(pc: PageContext): Promise<ReactNode> {
   ];
   return (
     <>
-      <PageHeader title="Commissions" description="Append-only ledger; approve or reject pending commissions." />
+      <PageHeader title="Commissions" description="Approve or reject pending affiliate commissions. Every change is recorded and reversible." />
       <Flash pc={pc} />
       <Card>
         <Table columns={columns} rows={rows} getRowKey={(c) => c.commissionId} emptyTitle="No commissions yet" />
@@ -390,7 +390,7 @@ async function balances(pc: PageContext): Promise<ReactNode> {
   ];
   return (
     <>
-      <PageHeader title="Balances" description="Derived from the ledger — never stored as mutable numbers." />
+      <PageHeader title="Balances" description="Live affiliate balances, always calculated from recorded activity." />
       <Card>
         <Table columns={columns} rows={rows} getRowKey={(b) => `${b.affiliateId}:${b.currency}`} emptyTitle="No balances yet" />
       </Card>

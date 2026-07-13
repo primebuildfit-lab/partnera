@@ -158,11 +158,11 @@ describe("delivery — Creator Marketplace surfaces (real services)", () => {
     const world = await createDemoWorld();
     const session = await login(world, world.users.owner, "business");
     const dash = await get(world, "/business/creators", session);
-    expect(dash.body).toContain("Creator dashboard");
+    expect(dash.body).toContain("Awaiting review");
     const queue = await get(world, "/business/creators/submissions", session);
     expect(queue.body).toContain("Cora Creator"); // the under-review unboxing submission
     const payments = await get(world, "/business/creators/payments", session);
-    expect(payments.body).toContain("paid (sim)");
+    expect(payments.body).toContain("simulated");
   });
 
   it("affiliate content library unlocks the published asset by rank", async () => {
@@ -185,6 +185,51 @@ describe("delivery — Creator Marketplace surfaces (real services)", () => {
     const post = await handle(world, req({ method: "POST", path: oppMatch![0], cookies: { pt_session: session } }));
     expect(post.status).toBe(303);
     expect(post.headers.location).toContain("intent=success");
+  });
+
+  it("does not expose internal architecture terms in user-facing pages", async () => {
+    const world = await createDemoWorld();
+    const owner = await login(world, world.users.owner, "business");
+    const creator = await login(world, world.users.creator, "creator");
+    const jargon = /append-only|creator-payment ledger|\bTenant member\b|repository|domain event/i;
+    for (const [session, path] of [
+      [owner, "/business"], [owner, "/business/creators"], [owner, "/business/creators/payments"],
+      [creator, "/creator"], [creator, "/creator/earnings"],
+    ] as const) {
+      const res = await get(world, path, session);
+      expect(res.body, `${path} leaks jargon`).not.toMatch(jargon);
+    }
+  });
+
+  it("business creator home shows the first-run checklist and it can be dismissed", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const home = await get(world, "/business/creators", session);
+    expect(home.body).toContain("Get started");
+    const dismiss = await handle(world, req({ method: "POST", path: "/business/creators/checklist/off", cookies: { pt_session: session } }));
+    expect(dismiss.status).toBe(303);
+    expect(dismiss.headers["set-cookie"]).toContain("pt_cm_checklist=off");
+  });
+
+  it("setup guide wizard renders numbered steps", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business/creators/setup", session);
+    expect(res.body).toContain("Creator Program setup");
+    expect(res.body).toContain("Payments per category");
+    expect(res.body).toContain("Acceptance limits");
+  });
+
+  it("simulated payment shows the full money breakdown and never claims real money moved", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business/creators/payments", session);
+    expect(res.body).toContain("Creator payment");
+    expect(res.body).toContain("Partnera fee");
+    expect(res.body).toContain("Creator receives");
+    expect(res.body.toLowerCase()).toContain("simulated");
+    // A money-moving action is behind a confirm disclosure, not a bare single-click button.
+    expect(res.body).toContain("Authorize payment…");
   });
 
   it("program setup shows PrimeBuild's own categories + payments and the config notice", async () => {
@@ -229,14 +274,18 @@ describe("delivery — Creator Marketplace surfaces (real services)", () => {
     expect(post.headers.location).toContain("intent=success");
   });
 
-  it("enforces separation of duties on creator payment authorization", async () => {
+  it("gates the authorize control by permission and hides it behind a confirmation", async () => {
     const world = await createDemoWorld();
-    // The owner approved the seeded submission; the owner authorizing its payment must fail SoD.
-    // (Seed already authorized+paid via finance, so we assert the SoD rule via a fresh attempt is guarded.)
+    // A user WITHOUT creator_payment.authorize must never see an authorize control.
+    const creatorSession = await login(world, world.users.creator, "creator");
+    const denied = await get(world, "/business/creators/payments", creatorSession);
+    expect(denied.body).not.toContain("/authorize");
+    // The authorized owner sees the approved payable's authorize action, but only behind a
+    // confirm disclosure — no accidental single click can authorize a (simulated) payout.
     const ownerSession = await login(world, world.users.owner, "business");
     const payments = await get(world, "/business/creators/payments", ownerSession);
-    // The seeded payment is already paid; the page should not offer authorize/execute for it.
-    expect(payments.body).not.toContain("/authorize");
+    expect(payments.body).toContain("Authorize payment…");
+    expect(payments.body).toContain("/authorize"); // inside a <details> confirm, per ConfirmButton
   });
 });
 

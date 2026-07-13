@@ -115,6 +115,7 @@ export async function handle(world: DemoWorld, req: WebRequest): Promise<WebResp
     path: req.path,
     params: {},
     flash: flashFrom(req.query),
+    cookies: req.cookies,
   };
 
   try {
@@ -268,6 +269,13 @@ async function workflow(world: DemoWorld, ctx: WebContext, req: WebRequest): Pro
         const programId = asId<CreatorProgramId>(parts[4]!);
         services.creator.setBudget(request, programId, { totalMinor: String(Math.max(0, Math.round(Number(req.form.totalMajor ?? "0") * 100))), currency: "USD" });
         return back("/business/creators/config", "success", "Program budget updated.");
+      }
+      // First-run checklist dismiss / reopen (UI preference cookie).
+      if (kind === "checklist" && id === "off") {
+        return { status: 303, headers: { location: "/business/creators?flash=Checklist%20hidden.&intent=success", "set-cookie": "pt_cm_checklist=off; Path=/; Max-Age=31536000; SameSite=Lax" }, body: "" };
+      }
+      if (kind === "checklist" && id === "on") {
+        return { status: 303, headers: { location: "/business/creators?flash=Checklist%20shown.&intent=success", "set-cookie": "pt_cm_checklist=; Path=/; Max-Age=0" }, body: "" };
       }
       // Waiting-queue actions (over-limit content is never discarded).
       if (kind === "queue" && action === "promote") {

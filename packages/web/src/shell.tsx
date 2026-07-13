@@ -144,7 +144,7 @@ function SessionBox({ ctx, scope }: { ctx: WebContext; scope: AppScope }): JSX.E
       </div>
       <div style={{ color: tokens.color.textMuted, fontSize: tokens.font.size.xs }}>{ctx.session.email}</div>
       <div style={{ color: tokens.color.textMuted, fontSize: tokens.font.size.xs, marginTop: tokens.space.xs }}>
-        {ctx.session.isPlatformOperator ? "Platform operator" : "Tenant member"} · {scope}
+        {ctx.session.isPlatformOperator ? "Partnera staff" : "Team member"} · {titleFor(scope)}
       </div>
       <a href="/logout" style={{ display: "inline-block", marginTop: tokens.space.sm, fontSize: tokens.font.size.sm }}>
         Log out

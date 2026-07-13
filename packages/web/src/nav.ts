@@ -44,12 +44,13 @@ export const BUSINESS_NAV: NavTree = [
   {
     title: "Creators",
     items: [
-      { label: "Creator Dashboard", href: "/business/creators", permission: "creator.view" },
-      { label: "Program Setup", href: "/business/creators/config", permission: "creator_program.manage" },
+      { label: "Overview", href: "/business/creators", permission: "creator.view" },
+      { label: "Setup guide", href: "/business/creators/setup", permission: "creator_program.manage" },
+      { label: "Creator Program", href: "/business/creators/config", permission: "creator_program.manage" },
       { label: "Opportunities", href: "/business/creators/opportunities", permission: "content_opportunity.manage" },
-      { label: "Review Queue", href: "/business/creators/submissions", permission: "submission.review" },
-      { label: "Waiting Queue", href: "/business/creators/queue", permission: "submission.review" },
-      { label: "Creator Payments", href: "/business/creators/payments", permission: "creator_payment.authorize" },
+      { label: "Reviews", href: "/business/creators/submissions", permission: "submission.review" },
+      { label: "Queue", href: "/business/creators/queue", permission: "submission.review" },
+      { label: "Payments", href: "/business/creators/payments", permission: "creator_payment.authorize" },
       { label: "Content Library", href: "/business/creators/library", permission: "content_asset.manage" },
     ],
   },
@@ -60,9 +61,9 @@ export const BUSINESS_NAV: NavTree = [
   {
     title: "Account",
     items: [
-      { label: "Organization", href: "/business/organization", permission: "businesses.read" },
+      { label: "Company", href: "/business/organization", permission: "businesses.read" },
       { label: "Notifications", href: "/business/notifications" },
-      { label: "Configuration", href: "/business/configuration", permission: "settings.read" },
+      { label: "Settings", href: "/business/configuration", permission: "settings.read" },
       { label: "Audit", href: "/business/audit", permission: "audit.read" },
     ],
   },
@@ -111,9 +112,9 @@ export const CREATOR_NAV: NavTree = [
   {
     title: "Work",
     items: [
-      { label: "Overview", href: "/creator" },
-      { label: "Discover", href: "/creator/discover" },
-      { label: "My Jobs", href: "/creator/jobs" },
+      { label: "Home", href: "/creator" },
+      { label: "Find companies", href: "/creator/discover" },
+      { label: "My Work", href: "/creator/jobs" },
     ],
   },
   {

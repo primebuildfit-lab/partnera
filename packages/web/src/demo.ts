@@ -326,6 +326,15 @@ export function buildDemoRuntime(opts?: { clock?: Clock; ids?: IdGenerator }): D
     const subD = await svc.creator.submit(creator, { opportunityId: oppD.id, deliverableId: delD.id, fileName: "broll.mp4", durationSec: 12, hasAudio: false, language: "en", note: "Raw ambient" });
     await svc.creator.reviewWithScheme(owner, subD.id, { categoryKey: "rejected", accept: true, reason: "Off-brief but useful as internal b-roll." });
 
+    // Opportunity E — reviewed "Good" and within budget → an APPROVED payable left
+    // for Brian to authorize in the pilot (the "authorize simulated payment" step).
+    const oppE = svc.creator.createOpportunity(owner, { campaignId, title: "Product demo (short)", description: "Quick product demo.", eligibility: "open", deliverables: [{ format: "product_demo", paymentMinor: "2000", currency: "USD", minWidthPx: 1080, requiresCta: true, language: "en" }] });
+    await svc.creator.publishOpportunity(owner, oppE.id);
+    const delE = uow.creator.listDeliverables(oppE.id)[0]!;
+    const appE = svc.creator.apply(creator, oppE.id); svc.creator.acceptTerms(creator, appE.id);
+    const subE = await svc.creator.submit(creator, { opportunityId: oppE.id, deliverableId: delE.id, fileName: "demo.mp4", widthPx: 1080, heightPx: 1920, durationSec: 25, hasAudio: true, hasCta: true, language: "en", note: "Clear product demo with CTA" });
+    await svc.creator.reviewWithScheme(owner, subE.id, { categoryKey: "good", accept: true, reason: "Solid demo — approve at Good.", legalCleared: true });
+
     // --- Provisional business plans + a disclosed house promotion (Parts 9/10) ---
     uow.creator.upsertPlan({ id: asId<BusinessPlanId>("plan_starter"), key: "starter", name: "Starter (provisional)", provisional: true, trialDays: 150, maxActivePrograms: 1, submissionsPerMonth: 50, transactionFeeBps: 400, customBranding: false, notes: "Up to 5-month intro trial; trial length configurable, not globally locked." });
     uow.creator.upsertPlan({ id: asId<BusinessPlanId>("plan_pro"), key: "pro", name: "Pro (provisional)", provisional: true, trialDays: 30, maxActivePrograms: 10, submissionsPerMonth: 1000, transactionFeeBps: 300, customBranding: true, notes: "Reduced fee within the 2-4% range; final price undecided." });

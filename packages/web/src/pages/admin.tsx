@@ -66,7 +66,7 @@ function health(_pc: PageContext): ReactNode {
     { name: "Domain engines", status: "healthy" },
     { name: "Persistence (relational store)", status: "healthy" },
     { name: "Application services", status: "healthy" },
-    { name: "Ledger integrity", status: "healthy" },
+    { name: "Payments integrity", status: "healthy" },
     { name: "Payout rail", status: "not_configured" },
     { name: "Auth provider", status: "not_configured" },
   ];

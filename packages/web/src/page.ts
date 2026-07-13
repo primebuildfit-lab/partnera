@@ -22,4 +22,6 @@ export interface PageContext {
   readonly path: string;
   readonly params: Readonly<Record<string, string>>;
   readonly flash?: Flash;
+  /** Request cookies, so pages can honour UI preferences (e.g. dismissed checklist). */
+  readonly cookies?: Readonly<Record<string, string>>;
 }
