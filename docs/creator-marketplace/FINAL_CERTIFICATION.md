@@ -84,7 +84,7 @@ data · legal/commercial launch. All are documented (CM10/CM14+ in
 - No fake real-payment claims: **✅** (all simulated/mock, labelled)
 - No external-provider dependency: **✅**
 
-## 7. Verdict
+## 7. Verdict (Phase 1 — local use)
 
 > ## CREATOR MARKETPLACE READY FOR LOCAL USE
 
@@ -94,3 +94,50 @@ AI review, and content storage are **simulated and clearly labelled**. Deferred 
 UI/analytics enhancements that do not block local use; external activation (real money,
 providers, Shopify, deployment, legal) remains **not started** by design and gated on
 explicit go-ahead + counsel.
+
+---
+
+## 8. Phase 2 — Configurable Business Programs & Content Operations
+
+**Build:** 26 test-files / **176 tests** green (`pnpm verify` exit 0). Live HTTP drive of
+Program Setup, scheme-driven Review Workspace, and Waiting Queue; a live category confirmation
+created a payable; **new config entities (scheme/budget/disposition) persisted across restart.**
+
+### Locked clarifications — verified
+| Clarification | Verified |
+|---|---|
+| Companies configure their **own** categories | ✅ `EvaluationScheme`; `programs.test.ts`; UI |
+| Companies configure their **own** payments | ✅ `reviewWithScheme` pays the scheme amount; `creator-programs.test.ts` |
+| No global hardcoded creator prices | ✅ PrimeBuild's $0/$10/$20/$35 is seeded **editable data**; default template is a single "Approved" category; tenant-isolation test shows a foreign tenant gets the default, never PrimeBuild's config |
+| One or more categories (four not required) | ✅ single-category scheme test passes |
+| Companies configure acceptance limits | ✅ `ProgramCapacity`; `capacityGate` |
+| Waiting queues preserve useful submissions | ✅ over-limit → `waiting_for_*`, never auto-rejected; queue UI |
+| Quality / payment / reuse are independent | ✅ `SubmissionDisposition` separate fields; retained-internal test |
+| Partnera earns a separate transparent fee | ✅ per-category fee/net breakdown; fee 2–4%, snapshot-locked |
+| AI recommends, never sets/authorizes payment | ✅ two-score advisory; `authorizesPayment:false`; recommend creates no payable |
+| Only the business controls its prices | ✅ creator/other-tenant cannot save scheme or read it (negative tests) |
+| Real AI & real payments disconnected | ✅ mock + simulated, labelled |
+
+### Certification checklist (local pilot)
+- Critical: **0** · High: **0**
+- Company-level configuration verified: **✅**
+- No global hardcoded creator prices: **✅**
+- Tenant isolation verified: **✅**
+- Capacity & budget queues verified: **✅**
+- Content reuse classification verified: **✅**
+- Affiliate access verified: **✅** (Phase 1, unchanged)
+- Simulated money flow verified: **✅**
+- Persistence verified (incl. new entities): **✅**
+- Local app installable: **✅**
+- No external provider connected: **✅**
+
+## Final decision
+
+> ## PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT
+
+Every business controls its own creator program (categories, payments, capacity, budget);
+over-limit content waits instead of being discarded; quality, payment, and reuse are
+independent decisions; Partnera charges a separate, transparent, snapshot-locked 2–4% fee;
+AI is advisory only; all payments and AI are simulated locally. **No external payment provider,
+billing, Shopify install, external AI, production database, or deployment is connected** — those
+remain the external gates, not started, pending explicit go-ahead + counsel.

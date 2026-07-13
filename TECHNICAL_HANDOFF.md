@@ -108,6 +108,14 @@ in `web`. Key entry points: `CreatorService` (`application/src/services/creator.
 `CreatorRepository` (`persistence/src/repositories/creator.ts`), money engine
 (`creator-marketplace/src/money.ts`).
 
+**Configurable programs:** each business owns its **evaluation scheme** (custom categories →
+payments), **capacity**, and **budget** (Business → Creators → **Program Setup**). The Review
+Workspace shows two advisory AI scores + a category selector; confirming a category applies the
+**scheme's** payment (AI never sets money) and routes over-limit content to the **Waiting Queue**
+(never auto-rejected). Independent pay/quality/reuse live on `SubmissionDisposition`. Key methods:
+`saveScheme` / `reviewWithScheme` / `capacityGate` / `computeExposure`. Pilot walkthrough:
+[docs/creator-marketplace/LOCAL_PILOT_GUIDE.md](docs/creator-marketplace/LOCAL_PILOT_GUIDE.md).
+
 **Simulated (local only):** payouts (`SIMULATED-*` ref), AI review (deterministic mock,
 `authorizesPayment:false`), content storage (metadata only). **External activation** — real
 providers, money, Shopify install, deploy, legal launch — is **not started** and gated on

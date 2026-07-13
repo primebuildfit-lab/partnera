@@ -2,6 +2,39 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-12 — Creator: Configurable Business Programs & Content Operations (branch)
+
+Extended (not rebuilt) the certified Creator Marketplace so every business controls its own
+program. No external providers, no real money, no deploy. `main` untouched.
+
+### Added
+- **Engine** (`@partnera/creator-marketplace/programs.ts`): `EvaluationScheme` + custom
+  `EvaluationCategory` (category → configured payment; **Partnera imposes no prices**), `ProgramCapacity`,
+  `ProgramBudget`, `computeExposure`, `capacityGate` (over-limit → waiting, never auto-rejected),
+  `SubmissionDisposition` (independent pay/quality/reuse fields), `mockTwoScoreReview` (technical +
+  commercial advisory scores), provisional `BusinessPlanDefinition`/`BusinessTrialState`,
+  disclosed `PromotionalChannel`/`PromotedPlacement`.
+- **Persistence**: 8 new collections in `UnitOfWork` + `CreatorRepository` methods.
+- **Application** (`CreatorService`): `saveScheme`/`getScheme`/`validateScheme`, `setCapacity`,
+  `setBudget`, `exposureFor`, `recommend`/`recommendPreview`, `reviewWithScheme` (human confirms
+  category → scheme sets payment; AI never sets money), `setDisposition`, `promoteFromQueue`.
+- **Web**: Program Setup (category→payment editor, budget, exposure, "Partnera does not determine
+  compensation" notice), scheme-driven Review Workspace (two AI scores + per-category fee/net
+  breakdown + category selector), Waiting Queue (honest states + promote/retain/archive).
+  **PrimeBuild pilot seed** ($0/$10/$20/$35 editable scheme, tight budget, waiting-for-budget +
+  internal-only examples, provisional plans + disclosed house promotion).
+- Docs: `LOCAL_PILOT_GUIDE.md`; updated `IMPLEMENTATION_STATUS.md` + `FINAL_CERTIFICATION.md`
+  (**PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT**).
+
+### Locked clarifications (recorded)
+Companies configure their own categories, payments, and acceptance limits; waiting queues
+preserve useful submissions; quality/payment/reuse are independent decisions; Partnera earns a
+separate transparent 2–4% fee; PrimeBuild's $0/$10/$20/$35 is **not global**; final memberships
+and prices remain undecided; real AI and real payments remain disconnected.
+
+### Tests
+- +22 tests (10 engine, 8 service incl. negatives, 4 web). **176 total, green.**
+
 ## [Unreleased] — 2026-07-12 — Creator Marketplace: local implementation (branch)
 
 Built the Creator Marketplace locally through technical certification on branch

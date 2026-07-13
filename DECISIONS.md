@@ -242,6 +242,19 @@ production, public deploy, legal launch) remains **not started** and gated on co
 explicit go-ahead (CM10/CM14+). Not merged to `main`; not "Mega Module 5". See
 [FINAL_CERTIFICATION.md](docs/creator-marketplace/FINAL_CERTIFICATION.md).
 
+### D-322 ✅ Creator programs are **business-configured**; Partnera imposes no creator prices
+Each business defines its **own** evaluation categories and the payment each maps to
+(`EvaluationScheme`), its acceptance **capacity** and **budget**, and independent **pay/quality/
+reuse** disposition per submission. AI is **advisory** (two scores + recommended category) and
+**never sets or authorizes payment** — the business's saved config maps the human-confirmed
+category to money. Over-limit content **waits** (`waiting_for_budget`/`waiting_for_capacity`),
+it is **never auto-rejected**, and low-value content may be **retained** (internal/reusable).
+PrimeBuild's **$0/$10/$20/$35** is editable PrimeBuild data, **not a Partnera global price**.
+Partnera charges only its separate, transparent, snapshot-locked **2–4%** fee. Provisional
+plans/trials and disclosed promotional channels exist as local config with **no billing and no
+paid media**. Verified locally: **PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT**
+(176 tests, live + restart). External activation unchanged and not started.
+
 ## Open (deferred to later modules)
 
 | ID | Open decision | Blocks | Notes |

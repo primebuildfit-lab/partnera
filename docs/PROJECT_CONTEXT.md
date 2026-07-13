@@ -7,7 +7,7 @@
 >
 > Maintenance rule: update this file whenever maturity, status, decisions, or "next work"
 > change. Keep it dense. Do not let it drift.
-> **Last verified:** 2026-07-12 (Windows desktop integration — icon, Desktop/Start Menu shortcuts, PWA; 17 packages, 105 tests green; launched via shortcut on Windows 11). Plus **Creator Marketplace** — architecture-locked and **built locally** on branch `feat/creator-marketplace` (18 packages, 154 tests green; payouts/AI/storage simulated; external activation gated). See [creator-marketplace/FINAL_CERTIFICATION.md](creator-marketplace/FINAL_CERTIFICATION.md).
+> **Last verified:** 2026-07-12 (Windows desktop integration — icon, Desktop/Start Menu shortcuts, PWA; 17 packages, 105 tests green; launched via shortcut on Windows 11). Plus **Creator Marketplace** — architecture-locked and **built locally** on branch `feat/creator-marketplace`, now with **configurable business programs & content operations** (custom categories→payments, capacity/budget waiting queues, independent pay/quality/reuse, two-score advisory AI). **18 packages, 176 tests green**; payouts/AI/storage simulated; external activation gated. Certified **READY FOR LOCAL PILOT** ([creator-marketplace/FINAL_CERTIFICATION.md](creator-marketplace/FINAL_CERTIFICATION.md)).
 
 ---
 
@@ -296,5 +296,15 @@ permission-gated reads. 98 green tests. **No engine interface changed.** Run: `p
   providers, Shopify, deploy, legal) not started** — gated (D-321). Certified **READY FOR LOCAL
   USE** ([FINAL_CERTIFICATION.md](creator-marketplace/FINAL_CERTIFICATION.md)). Not merged to
   `main`; not MM5.
+- **2026-07-12 — Creator Configurable Business Programs & Content Operations (branch).**
+  Every business now controls its own program: custom **evaluation categories → payments**
+  (Partnera imposes none; PrimeBuild's $0/$10/$20/$35 is editable local data, not a global
+  price), **capacity/budget waiting queues** (over-limit content waits, never auto-rejected),
+  **independent pay/quality/reuse** disposition, **two advisory AI scores** (AI recommends a
+  category, never sets/authorizes money), provisional plans + disclosed promotional channels
+  (no billing, no paid media). PrimeBuild pilot seeded; **176 tests green**, live + restart
+  verified. Decision **D-322**. Certified **PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT**
+  ([LOCAL_PILOT_GUIDE.md](creator-marketplace/LOCAL_PILOT_GUIDE.md)). Real AI/payments still
+  disconnected.
 
 *(Full history: git log + DECISIONS.md. Do not duplicate it here.)*

@@ -161,6 +161,55 @@ services → UI across creator/business/affiliate → local install + persistenc
 verified. **External activation (real money, providers, Shopify, deployment, legal) not started
 — by design.**
 
+---
+
+## Phase 2 — Configurable Business Programs & Content Operations ✅
+
+Extended (not rebuilt) the certified module so every business controls its own program.
+**Workspace 26 packages test-files / 176 tests green; live HTTP + restart verified.**
+
+### Locked clarifications now enforced in code
+- **Businesses configure their own categories & payments.** `EvaluationScheme` + custom
+  `EvaluationCategory[]` (name/description/order/color/band/payment/payable/library/affiliate/
+  human-approval). Partnera imposes none. Supports **one or more** categories (four never
+  required). `saveScheme`/`validateScheme`. PrimeBuild's **$0/$10/$20/$35** is seeded as
+  **editable PrimeBuild data**, not a global constant; UI carries the "Partnera does not
+  determine creator compensation" notice.
+- **AI recommends a category; the business config maps category → payment.** Two advisory
+  scores (`mockTwoScoreReview`: technical + commercial) + recommended category; the human
+  confirms the category and the **scheme** sets the money (`reviewWithScheme`). AI never sets
+  or releases payment.
+- **Capacity & budget are configurable; over-limit content waits, never auto-rejected.**
+  `ProgramCapacity` + `ProgramBudget` + `capacityGate` route accepted-but-over-limit items to
+  `waiting_for_capacity` / `waiting_for_budget`; `computeExposure` shows committed/paid/
+  remaining/projected-fee before accepting more. Waiting Queue UI with promote/retain/archive.
+- **Pay / quality / reuse are independent decisions.** `SubmissionDisposition` has separate
+  fields (paymentEligible, categoryKey, libraryStatus, affiliateAccess, editingStatus,
+  commercialStatus, legalStatus, internalUse). Low-score content can be retained internal_only.
+- **Money-flow clarity.** Review workspace shows per-category creator payment / Partnera fee /
+  business total / creator net; fee snapshot locked at acceptance (unchanged).
+- **Provisional plans/trials + disclosed promotional channels** (`BusinessPlanDefinition`,
+  `BusinessTrialState`, `PromotionalChannel`, `PromotedPlacement`) seeded as editable local
+  data; **no billing, no paid media**; every placement carries a disclosure.
+
+### Files
+- Engine: `programs.ts` (+ vocab queue/disposition, ai two-score, new ids). Persistence:
+  8 new collections in `UnitOfWork` + `CreatorRepository` methods. Application: `saveScheme`,
+  `setCapacity`, `setBudget`, `exposureFor`, `recommend`/`recommendPreview`, `reviewWithScheme`,
+  `setDisposition`, `promoteFromQueue`, reads. Web: Program Setup, Waiting Queue, scheme-driven
+  Review Workspace; PrimeBuild pilot seed.
+
+### Tests
+- `programs.test.ts` (10, engine), `creator-programs.test.ts` (8, service incl. negatives:
+  creator can't configure, tenant-isolated scheme, AI never pays), 4 new web tests.
+
+### Deferred (honest, non-blocking for local pilot)
+- Full page-builder UI, admin promo-channel console, plan-management UI, multi-reviewer screens
+  (domain/data present; screens minimal). Shopify prep remains contracts/runbooks only.
+
+### External gates (🔒 unchanged, not crossed)
+Real payments/providers, Shopify install, external AI, production DB, deploy, legal launch.
+
 ## Stop line (never crossed locally)
 Real payment providers · real money movement · real payout credentials · Shopify production /
 store install · external AI providers · public deployment · real creator personal/financial

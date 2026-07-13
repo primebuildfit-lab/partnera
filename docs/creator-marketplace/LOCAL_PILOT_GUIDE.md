@@ -1,0 +1,67 @@
+# Local Pilot Guide — PrimeBuild Creator Operations
+
+> How Brian runs the PrimeBuild creator-content pilot **locally**. Everything here is
+> local and simulated — **no real money, no external providers, no deployment**. This
+> complements the root [INSTALL.md](../../INSTALL.md).
+
+## Start the app
+
+```bash
+pnpm install
+pnpm --filter @partnera/web serve      # bundles + serves at http://localhost:4000
+# or, on Windows, the launcher / desktop shortcut:  .\scripts\partnera.ps1 open
+```
+
+First run seeds the PrimeBuild pilot through the **real services** (money spine runs;
+payouts SIMULATED). Data persists to `.partnera/data.json` and survives restart.
+
+## Sign in (dev provider — no password; local only)
+
+| Role | Email | Opens |
+|---|---|---|
+| Business owner | `owner@primebuild.test` | Business → **Creators** |
+| Finance | `finance@primebuild.test` | authorizes/executes creator payments |
+| Creator (Cora) | `cora@creators.test` | **Creator Portal** |
+| Affiliate (Brian) | `brian@primebuild.test` | Affiliate → **Content Library** |
+| Platform admin | `admin@partnera.test` | Admin Console |
+
+## The 15-step pilot (as owner unless noted)
+
+1. **Configure PrimeBuild's category payments** — Business → Creators → **Program Setup**.
+   Edit any category's payment inline (seeded $0 / $10 / $20 / $35 — *PrimeBuild's own*, editable).
+   Note the banner: "Partnera does not determine creator compensation."
+2. **Set the accepted-content limit** — Program Setup shows capacity; the seed sets a pilot cap.
+3. **Set the budget** — Program Setup → Budget (seeded tight so a waiting-for-budget item appears);
+   see committed / paid / remaining / **projected Partnera fee** / total cost.
+4. **Publish an opportunity** — Creators → Opportunities → Publish (several are seeded).
+5. **Creator submits** — sign in as Cora → Creator Portal → Discover → Apply → Accept terms
+   (fee locks) → My Jobs → upload (demo metadata only).
+6. **Run simulated AI review** — Creators → Review Workspace shows two advisory scores
+   (technical + commercial) + a recommended category (mock, labelled).
+7. **Select the category manually** — pick from your scheme in the Review Workspace.
+8. **See payment and fee** — the workspace shows, per category, creator payment / Partnera fee /
+   business total / creator net.
+9. **Approve or queue** — confirm a category. If over budget/capacity it enters the **Waiting
+   Queue** (honest status), never auto-rejected. A low-score category can be retained
+   **internal only**.
+10. **Authorize simulated payment** — finance signs in → Creators → Creator Payments →
+    Authorize (separation of duties: the approver cannot authorize).
+11. **Execute simulated payout** — finance → Pay (sim). No real money moves.
+12. **Publish content to library** — Creators → Content Library → Publish to library.
+13. **Assign affiliate ranks** — a rank-unlock rule is seeded; approved content is rank-gated.
+14. **View from the affiliate portal** — sign in as Brian → Affiliate → Content Library:
+    unlocked vs locked by rank.
+15. **Restart & confirm persistence** — stop and restart; the app loads existing data
+    (config, budget, dispositions, payables all survive).
+
+## Waiting queue (Part 4)
+
+Creators → **Waiting Queue** lists items `waiting_for_budget` / `waiting_for_capacity` /
+`internal_only` etc. Actions: **Promote to review**, **Keep internal**, **Archive**. Nothing is
+promised payment while waiting; creators see honest statuses.
+
+## What stays simulated / disconnected
+
+Payouts (`SIMULATED-*`), AI review (deterministic mock), content storage (metadata only),
+billing (provisional plans, no charges), promotional channels (disclosed, no paid media). Real
+providers, Shopify install, production DB, and deployment are **external gates — not started**.

@@ -135,10 +135,19 @@ spine (opportunity → apply → accept(fee snapshot) → submit → AI-advisory
 authorize (SoD) → **simulated** payout → library → rank unlock) runs in the local app and
 persists across restart. **18 packages, 154 tests green.** Payouts, AI review, and content
 storage are **simulated and clearly labelled**; **external activation (real money, providers,
-Shopify, deployment, legal) is not started** — gated on counsel + explicit go-ahead. Verdict:
-[FINAL_CERTIFICATION.md](docs/creator-marketplace/FINAL_CERTIFICATION.md) → **READY FOR LOCAL
-USE**. Not the same as "Mega Module 5 — Live Infrastructure & Pilot". Full status:
+Shopify, deployment, legal) is not started** — gated on counsel + explicit go-ahead. Not the
+same as "Mega Module 5 — Live Infrastructure & Pilot". Full status:
 [IMPLEMENTATION_STATUS.md](docs/creator-marketplace/IMPLEMENTATION_STATUS.md).
+
+A follow-up phase — **Configurable Business Programs & Content Operations** — makes every
+business control its own program: custom **evaluation categories → payments** (Partnera imposes
+none; PrimeBuild's $0/$10/$20/$35 is editable local data, not a global price), **capacity/budget
+waiting queues** (over-limit content waits, never auto-rejected), **independent pay/quality/reuse
+disposition**, **two advisory AI scores** (AI recommends a category, never sets/authorizes money),
+and provisional plans/promotional channels (no billing, no paid media). PrimeBuild pilot seeded;
+**176 tests green**; live + restart verified. Verdict:
+[FINAL_CERTIFICATION.md](docs/creator-marketplace/FINAL_CERTIFICATION.md) → **PARTNERA CREATOR
+OPERATIONS READY FOR LOCAL PILOT**. Run it: [LOCAL_PILOT_GUIDE.md](docs/creator-marketplace/LOCAL_PILOT_GUIDE.md).
 
 ## Change log
 
@@ -147,6 +156,7 @@ USE**. Not the same as "Mega Module 5 — Live Infrastructure & Pilot". Full sta
 | 2026-07-11 | Phase 0 documentation set created (design only). |
 | 2026-07-12 | Creator Marketplace architecture lock — 33-doc future-expansion package (docs only; no code). |
 | 2026-07-12 | Creator Marketplace **locally implemented** (branch): engine + persistence + services + UI + seed; 18 pkgs / 154 tests; payouts/AI/storage simulated; certified READY FOR LOCAL USE. |
+| 2026-07-12 | Creator **Configurable Business Programs & Content Operations** (branch): business-owned evaluation schemes (categories→payment), capacity/budget waiting queues, independent pay/quality/reuse disposition, two-score advisory AI, provisional plans/promos; PrimeBuild pilot seed; **176 tests**; certified **READY FOR LOCAL PILOT**. |
 | 2026-07-11 | Mega Module 2 — Platform Foundation built & verified (12 packages, 47 tests). |
 | 2026-07-12 | Mega Module 3 — Persistence & Money Spine built & verified (16 packages, 84 tests): persistence layer, Payment Engine, application/API, HTTP delivery, canonical DB model. |
 | 2026-07-12 | Mega Module 4 — Delivery & First UX built & verified (17 packages, 98 tests): `@partnera/web` — Business/Affiliate/Admin apps (SSR React over the services), workflows, analytics, auth prep, demo world. |

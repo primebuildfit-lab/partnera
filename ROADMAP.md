@@ -101,6 +101,11 @@ library. Partnera earns via a transparent **2%–4%** platform fee.
   "Mega Module 5 — Live Infrastructure & Pilot", which remains the next affiliate-core step.
 - **Sequencing:** recommended **after** Phase 1 exit (live infrastructure), reusing it; needs
   explicit human go-ahead and counsel sign-off on money/rights before any build.
+- **Local build (branch `feat/creator-marketplace`):** implemented through a **local pilot** —
+  the full creator spine plus **configurable business programs** (custom categories→payments,
+  capacity/budget waiting queues, independent pay/quality/reuse, two-score advisory AI). Payouts/
+  AI/storage **simulated**; 176 tests green; certified **READY FOR LOCAL PILOT**. External
+  activation (real money, providers, Shopify, deploy, legal) **not started** — gated.
 
 ## Cross-phase always-on
 
