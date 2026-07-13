@@ -92,6 +92,12 @@ importers:
 
   packages/core: {}
 
+  packages/creator-marketplace:
+    dependencies:
+      '@partnera/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/extension-engine:
     dependencies:
       '@partnera/core':

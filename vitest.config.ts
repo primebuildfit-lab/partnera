@@ -22,6 +22,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@partnera/core": pkg("core"),
+      "@partnera/creator-marketplace": pkg("creator-marketplace"),
       "@partnera/auth": pkg("auth"),
       "@partnera/offer-engine": pkg("offer-engine"),
       "@partnera/tracking-engine": pkg("tracking-engine"),

@@ -48,9 +48,9 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
 |---|---|---|
 | CM0 | Architecture lock | ✅ |
 | P0 | Reconciliation & baseline | ✅ |
-| P1 | Shared types & configuration | ⬜ |
-| P2 | Domain engines & state machines | ⬜ |
-| P3 | Persistence & tenant isolation | ⬜ |
+| P1 | Shared types & configuration | ✅ |
+| P2 | Domain engines & state machines | ✅ |
+| P3 | Persistence & tenant isolation | 🟡 |
 | P4 | Application services | ⬜ |
 | P5 | Creator Portal (UI) | ⬜ |
 | P6 | Business Creator Dashboard (UI) | ⬜ |
@@ -70,6 +70,31 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
 ### P0 ✅
 - **Files:** this tracker. **Tests:** baseline 105 green. **Assumptions:** none.
 - **Blockers:** none. **Verification:** `pnpm verify` exit 0 on `main` before branching.
+
+### P1 ✅ Shared types & configuration
+- **Files:** new package `@partnera/creator-marketplace` — `ids.ts` (branded ids),
+  `vocab.ts` (status/format/platform/rights/rank vocabularies + `isMember` guard),
+  `config.ts` (fee config in **bps**, 2%–4% validation, fee snapshot, provisional defaults,
+  scoring weights), `events.ts` (versioned event names). Registered in `tsconfig.json`,
+  `vitest.config.ts`.
+- **Tests:** `config.test.ts` (6) — fee range, non-integer rejection, defaults, vocab.
+- **Assumptions:** default fee 3% business-paid; SLA 5d; dispute 14d; revisions 2; age 18
+  (all provisional, D-330–D-336). **Blockers:** none. **Verification:** `pnpm verify` green.
+
+### P2 ✅ Domain engines & state machines
+- **Files:** `state.ts` (opportunity/application/submission/payment/dispute/asset/license
+  transition maps + guarded `transition`), `scoring.ts` (weighted score + mandatory-pass
+  gates + decision), `money.ts` (creator-payment **append-only event stream**, `computeFee`,
+  `assertCreatorAppendable`, `foldCreatorBalances`), `rank.ts` (hard rules + rank-unlock
+  resolution), `reputation.ts` (explainable standing), `ai.ts` (AIReviewer contract +
+  deterministic mock + `mayAutoApprove`), `entities.ts` (persisted record shapes).
+- **Tests:** `state.test.ts` (11), `money.test.ts` (7), `domain.test.ts` (12) — 30 tests
+  covering legal/illegal transitions, fee math (business/creator payer), append guard,
+  balance folding incl. reversal, scoring mandatory-gate override, rank resolution + leak
+  prevention, reputation, AI mock never authorizing payment, `mayAutoApprove` bounds.
+- **Assumptions:** creator money is a distinct append-only stream (same discipline as the
+  ledger; mirrors payment-engine's payout stream) — documented in P0 reconciliation.
+- **Blockers:** none. **Verification:** 18 packages, 140 tests, `pnpm verify` exit 0.
 
 *(Phases below are appended as they land, each with files / tests / assumptions / blockers /
 verification, and each committed as a milestone keeping `pnpm verify` green.)*

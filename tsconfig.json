@@ -3,6 +3,7 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
+    { "path": "packages/creator-marketplace" },
     { "path": "packages/auth" },
     { "path": "packages/offer-engine" },
     { "path": "packages/tracking-engine" },
