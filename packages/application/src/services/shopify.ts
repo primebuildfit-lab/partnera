@@ -152,6 +152,49 @@ export class InstallationService {
   listInstallations(): ShopifyInstallation[] {
     return this.uow.shopify.listInstallations();
   }
+
+  /**
+   * Dry-run for the PrimeBuild pilot (Block 8): given a verified shop, report what
+   * a migration WOULD do — detecting an existing tenant/program/config so nothing
+   * is duplicated. Performs **no writes**. Executing the JSON→hosted import is a
+   * separate, authorized step.
+   */
+  pilotMigrationPlan(shop: ShopDomain): {
+    installed: boolean;
+    tenantId: string | null;
+    existing: { programs: number; hasScheme: boolean; hasBudget: boolean; hasFee: boolean; opportunities: number; submissions: number };
+    wouldCreateTenant: boolean;
+    notes: string[];
+  } {
+    const inst = this.uow.shopify.getInstallationByShop(shop);
+    if (!inst) {
+      return {
+        installed: false, tenantId: null,
+        existing: { programs: 0, hasScheme: false, hasBudget: false, hasFee: false, opportunities: 0, submissions: 0 },
+        wouldCreateTenant: true,
+        notes: ["Shop not installed yet — install provisions a fresh tenant (owner + onboarding).", "PrimeBuild pilot config would then be imported idempotently (no duplicates)."],
+      };
+    }
+    const tenantId = inst.tenantId;
+    const programs = this.uow.creator.listPrograms(tenantId);
+    const program = programs[0];
+    const notes: string[] = [];
+    if (programs.length > 0) notes.push(`Tenant already has ${programs.length} program(s) — migration UPDATES, never duplicates.`);
+    return {
+      installed: true,
+      tenantId,
+      existing: {
+        programs: programs.length,
+        hasScheme: program ? !!this.uow.creator.getSchemeForProgram(tenantId, program.id) : false,
+        hasBudget: program ? !!this.uow.creator.getBudget(tenantId, program.id) : false,
+        hasFee: program ? !!this.uow.creator.getFeeSetting(tenantId, program.id) : false,
+        opportunities: this.uow.creator.listOpportunities(tenantId).length,
+        submissions: this.uow.creator.listSubmissionsForTenant(tenantId).length,
+      },
+      wouldCreateTenant: false,
+      notes,
+    };
+  }
 }
 
 /**

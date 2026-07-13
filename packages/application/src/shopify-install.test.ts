@@ -92,6 +92,21 @@ describe("onboarding (persisted, purpose-scoped)", () => {
   });
 });
 
+describe("PrimeBuild pilot dry-run (Block 8 — detect, never duplicate)", () => {
+  it("reports would-create for an uninstalled shop and no-duplicate for an installed one", () => {
+    const h = setup();
+    const uninstalled = h.services.installation.pilotMigrationPlan(shop("primebuild.myshopify.com"));
+    expect(uninstalled.installed).toBe(false);
+    expect(uninstalled.wouldCreateTenant).toBe(true);
+
+    h.services.installation.installOrResolve({ shop: shop("primebuild.myshopify.com"), scopes: "read_orders", tokenRef: "t", ownerEmail: "b@p.test", ownerName: "PB" });
+    const installed = h.services.installation.pilotMigrationPlan(shop("primebuild.myshopify.com"));
+    expect(installed.installed).toBe(true);
+    expect(installed.wouldCreateTenant).toBe(false);
+    expect(installed.tenantId).toBeTruthy();
+  });
+});
+
 describe("no browser-trusted tenant", () => {
   it("a shop that never installed resolves to no tenant", () => {
     const h = setup();
