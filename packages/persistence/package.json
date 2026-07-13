@@ -29,6 +29,7 @@
     "@partnera/notification-engine": "workspace:*",
     "@partnera/extension-engine": "workspace:*",
     "@partnera/platform": "workspace:*",
-    "@partnera/creator-marketplace": "workspace:*"
+    "@partnera/creator-marketplace": "workspace:*",
+    "@partnera/shopify": "workspace:*"
   }
 }

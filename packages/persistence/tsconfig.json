@@ -18,6 +18,7 @@
     { "path": "../notification-engine" },
     { "path": "../extension-engine" },
     { "path": "../platform" },
-    { "path": "../creator-marketplace" }
+    { "path": "../creator-marketplace" },
+    { "path": "../shopify" }
   ]
 }

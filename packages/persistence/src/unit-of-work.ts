@@ -44,6 +44,14 @@ import {
   type ProgramFeeSetting,
   type PilotChecklist,
 } from "@partnera/creator-marketplace";
+import {
+  type OnboardingState,
+  type ShopifyInstallation,
+  type ShopifyOfflineSession,
+  type StorageConnection,
+  type WebhookEvent,
+} from "@partnera/shopify";
+import { ShopifyRepository } from "./repositories/shopify";
 import { RelationalStore } from "./relational/store";
 import { AuditRepository } from "./repositories/audit";
 import { CreatorRepository } from "./repositories/creator";
@@ -86,6 +94,7 @@ export class UnitOfWork {
   readonly config: ConfigRepository;
   readonly audit: AuditRepository;
   readonly idempotency: IdempotencyRepository;
+  readonly shopify: ShopifyRepository;
   readonly creator: CreatorRepository;
 
   constructor(store: RelationalStore = new RelationalStore()) {
@@ -299,6 +308,26 @@ export class UnitOfWork {
       promotedPlacements,
       programFeeSettings,
       pilotChecklists,
+    );
+
+    // --- Shopify adapter (installations, sessions, webhooks, onboarding, storage) ---
+    const shopifyInstallations = store.define<ShopifyInstallation>("shopify_installations", {
+      pk: (i) => i.id,
+      unique: [{ name: "shop", key: (i) => i.shop }],
+    });
+    const shopifySessions = store.define<ShopifyOfflineSession>("shopify_sessions", { pk: (s) => s.shop });
+    const webhookEvents = store.define<WebhookEvent>("webhook_events", {
+      pk: (w) => w.id,
+      unique: [{ name: "idem", key: (w) => `${w.shop}::${w.topic}::${w.webhookId}` }],
+    });
+    const onboardingStates = store.define<OnboardingState>("onboarding_states", { pk: (o) => o.id });
+    const storageConnections = store.define<StorageConnection>("storage_connections", { pk: (s) => s.id });
+    this.shopify = new ShopifyRepository(
+      shopifyInstallations,
+      shopifySessions,
+      webhookEvents,
+      onboardingStates,
+      storageConnections,
     );
 
     // Seed platform-managed system roles so authorization works out of the box.

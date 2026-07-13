@@ -9,6 +9,7 @@ import { OrganizationService } from "./organization";
 import { PaymentService } from "./payment";
 import { QueryService } from "./query";
 import { TrackingService } from "./tracking";
+import { InstallationService, OnboardingService, WebhookService } from "./shopify";
 
 export * from "./organization";
 export * from "./offer";
@@ -18,6 +19,7 @@ export * from "./payment";
 export * from "./fraud";
 export * from "./admin";
 export * from "./query";
+export * from "./shopify";
 export * from "./creator";
 
 /** The full set of application services, constructed over one set of dependencies. */
@@ -33,6 +35,9 @@ export interface Services {
   readonly audit: AuditService;
   readonly query: QueryService;
   readonly creator: CreatorService;
+  readonly installation: InstallationService;
+  readonly webhooks: WebhookService;
+  readonly onboarding: OnboardingService;
 }
 
 /** Build every application service from shared dependencies (and an optional payout rail). */
@@ -49,5 +54,8 @@ export function createServices(deps: AppDeps, rail?: PayoutRail): Services {
     audit: new AuditService(deps),
     query: new QueryService(deps),
     creator: new CreatorService(deps),
+    installation: new InstallationService(deps),
+    webhooks: new WebhookService(deps),
+    onboarding: new OnboardingService(deps),
   };
 }

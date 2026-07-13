@@ -4,6 +4,7 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/creator-marketplace" },
+    { "path": "packages/shopify" },
     { "path": "packages/auth" },
     { "path": "packages/offer-engine" },
     { "path": "packages/tracking-engine" },
