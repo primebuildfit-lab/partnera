@@ -11,6 +11,9 @@ export default tseslint.config(
       "**/*.tsbuildinfo",
       "**/coverage/**",
       "**/.turbo/**",
+      // Deploy artifacts: real adapters (pg/network) activated only at deploy;
+      // outside the offline build/lint/test pipeline by design.
+      "**/deploy/**",
     ],
   },
   js.configs.recommended,
