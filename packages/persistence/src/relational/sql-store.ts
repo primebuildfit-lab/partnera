@@ -33,6 +33,17 @@ export interface SqlClient {
   begin(): void;
   commit(): void;
   rollback(): void;
+  /**
+   * Optional async lifecycle for a REAL database client (e.g. node-postgres):
+   * the sync `upsert`/`remove` buffer into a write-behind journal, and `flush`
+   * persists the buffered mutations to Postgres inside a transaction (called by
+   * the host at each request boundary). `close` releases the pool; `ping` backs
+   * readiness. The in-memory client leaves these undefined. See
+   * packages/persistence/deploy/pg-sql-client.ts.
+   */
+  flush?(): Promise<void>;
+  close?(): Promise<void>;
+  ping?(): Promise<boolean>;
 }
 
 /**
@@ -143,6 +154,19 @@ export class SqlStore extends RelationalStore {
       const rows = await this.sql.loadTable(collection.name);
       collection.loadRows(rows.map((r) => ({ row: r.data as never, version: r.version })));
     }
+  }
+
+  /** Persist buffered writes to the durable backend (real DB write-behind flush). */
+  async flush(): Promise<void> {
+    await this.sql.flush?.();
+  }
+  /** Readiness probe for the durable backend. */
+  async ping(): Promise<boolean> {
+    return this.sql.ping ? this.sql.ping() : true;
+  }
+  /** Release durable resources (pool) on shutdown. */
+  async close(): Promise<void> {
+    await this.sql.close?.();
   }
 
   override async transact<T>(fn: () => Promise<T> | T): Promise<T> {

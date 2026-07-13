@@ -15,7 +15,7 @@ import {
   type UserId,
 } from "@partnera/core";
 import { createServices, type Services } from "@partnera/application";
-import { UnitOfWork } from "@partnera/persistence";
+import { type RelationalStore, UnitOfWork } from "@partnera/persistence";
 import {
   type BusinessPlanId,
   makeCategory,
@@ -87,8 +87,10 @@ const USERS = {
 } as const;
 
 /** Construct the runtime (services, auth, ids) without writing any data. */
-export function buildDemoRuntime(opts?: { clock?: Clock; ids?: IdGenerator }): DemoRuntime {
-  const uow = new UnitOfWork();
+export function buildDemoRuntime(opts?: { clock?: Clock; ids?: IdGenerator; store?: RelationalStore }): DemoRuntime {
+  // The store is injectable so the hosted runtime can pass a SqlStore(Postgres);
+  // omitted => the in-memory reference store (local/dev/tests).
+  const uow = new UnitOfWork(opts?.store);
   const clock = opts?.clock ?? new FixedClock("2026-06-01T09:00:00.000Z");
   const ids = opts?.ids ?? new DemoIds();
   const services = createServices({ uow, clock, ids, events: new InMemoryEventBus() }, new DemoRail());
