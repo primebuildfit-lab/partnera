@@ -2,6 +2,37 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-12 — Creator Marketplace: local implementation (branch)
+
+Built the Creator Marketplace locally through technical certification on branch
+`feat/creator-marketplace` (not merged to `main`; no deploy, no external providers, no real
+money). Existing affiliate system and all prior tests unchanged.
+
+### Added
+- **`@partnera/creator-marketplace`** — new pure-domain engine (depends only on `core`):
+  vocabularies, fee config (2–4% bps, snapshot), state machines, weighted scoring with
+  mandatory gates, creator-payment **append-only money stream** + fee math + derived balances,
+  rank-unlock resolution, reputation, deterministic **AI mock** (never authorizes payment).
+- **Persistence** — `CreatorRepository` + 16 collections wired into `UnitOfWork` (tenant-scoped
+  business records, cross-tenant creator profiles, append-only versions/reviews/creator-ledger,
+  guarded money appends, durable snapshot).
+- **Application** — `CreatorService` (permission-aware; full spine: apply → accept(fee snapshot)
+  → submit → AI advisory → decide(scoring+mandatory gate) → authorize(SoD) → **simulated**
+  payout → publish to library → rank-gated affiliate access). 23 new RBAC permission keys +
+  roles (incl. `content_reviewer`, `creator`).
+- **Web** — new **"creator" AppScope**: Creator Portal (discover/jobs/earnings/profile),
+  business **Creators** section (opportunities/review queue/payments/library + workflows),
+  affiliate **Content Library** (rank-gated). Demo seed runs the real creator spine; local app
+  verified live over HTTP incl. persistence across restart.
+- Docs: `IMPLEMENTATION_STATUS.md`, `FINAL_CERTIFICATION.md` (**READY FOR LOCAL USE**).
+
+### Simulated / not connected (by design)
+- Payouts (SIMULATED, no provider), AI review (mock), content storage (metadata only). No card
+  data, no Shopify install, no deployment, no real creator/financial data.
+
+### Tests
+- +49 tests (creator engine, persistence, end-to-end spine, web surfaces). **154 total, green.**
+
 ## [Unreleased] — 2026-07-12 — Creator Marketplace: architecture lock (docs only)
 
 Documentation-only. Architecture-locked **future expansion**; **implementation not started**;

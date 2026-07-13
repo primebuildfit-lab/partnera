@@ -123,14 +123,22 @@ first Shopify commerce adapter (D-114), and client-side enhancement/telemetry �
 proving one real PrimeBuild conversion → payout on live infrastructure through
 the UI.
 
-## Future expansion (documented, not built)
+## Creator Marketplace — locally implemented (branch `feat/creator-marketplace`)
 
 **Creator Economy & Content Marketplace** — a second economic system where creators are paid
 per **approved deliverable** (transparent 2%–4% platform fee) beside the affiliate system,
-reusing the existing ledger/RBAC/payout/fraud/persistence/web spine. Fully documented and
-**architecture-locked** in [docs/creator-marketplace/](docs/creator-marketplace/README.md);
-**implementation not started**, **not** Mega Module 5, and **not required** for current local
-usability. Its own CM0–CM16 plan gates all money/rights work on counsel + explicit go-ahead.
+reusing the existing ledger/RBAC/payout/fraud/persistence/web spine. **Built locally through
+technical certification** on branch `feat/creator-marketplace` (not merged to `main`):
+new `@partnera/creator-marketplace` engine + persistence/application/web integration; a
+**Creator Portal** plus business Creators section and affiliate Content Library; the full
+spine (opportunity → apply → accept(fee snapshot) → submit → AI-advisory → review → approve →
+authorize (SoD) → **simulated** payout → library → rank unlock) runs in the local app and
+persists across restart. **18 packages, 154 tests green.** Payouts, AI review, and content
+storage are **simulated and clearly labelled**; **external activation (real money, providers,
+Shopify, deployment, legal) is not started** — gated on counsel + explicit go-ahead. Verdict:
+[FINAL_CERTIFICATION.md](docs/creator-marketplace/FINAL_CERTIFICATION.md) → **READY FOR LOCAL
+USE**. Not the same as "Mega Module 5 — Live Infrastructure & Pilot". Full status:
+[IMPLEMENTATION_STATUS.md](docs/creator-marketplace/IMPLEMENTATION_STATUS.md).
 
 ## Change log
 
@@ -138,6 +146,7 @@ usability. Its own CM0–CM16 plan gates all money/rights work on counsel + expl
 |---|---|
 | 2026-07-11 | Phase 0 documentation set created (design only). |
 | 2026-07-12 | Creator Marketplace architecture lock — 33-doc future-expansion package (docs only; no code). |
+| 2026-07-12 | Creator Marketplace **locally implemented** (branch): engine + persistence + services + UI + seed; 18 pkgs / 154 tests; payouts/AI/storage simulated; certified READY FOR LOCAL USE. |
 | 2026-07-11 | Mega Module 2 — Platform Foundation built & verified (12 packages, 47 tests). |
 | 2026-07-12 | Mega Module 3 — Persistence & Money Spine built & verified (16 packages, 84 tests): persistence layer, Payment Engine, application/API, HTTP delivery, canonical DB model. |
 | 2026-07-12 | Mega Module 4 — Delivery & First UX built & verified (17 packages, 98 tests): `@partnera/web` — Business/Affiliate/Admin apps (SSR React over the services), workflows, analytics, auth prep, demo world. |

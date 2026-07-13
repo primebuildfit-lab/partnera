@@ -231,6 +231,17 @@ seam** (D-319); content-license defaults are **conservative + explicit**, counse
 Provisional defaults D-330–D-336 (fee 3%, review SLA, dispute window, revision allowance, age/KYC,
 license defaults, AI-auto limits) in the module log.
 
+### D-321 ✅ Creator Marketplace built **locally** (branch), external activation gated
+The module is implemented through **local technical certification** on branch
+`feat/creator-marketplace` (new `@partnera/creator-marketplace` engine + persistence /
+application / web integration; 18 packages, 154 tests green). This **supersedes the
+"not implemented" clause of D-318 for local scope only**: payouts, AI review, and content
+storage are **simulated and clearly labelled**; **no real money, provider, Shopify install,
+deployment, or personal/financial data**. External activation (real providers, money, Shopify
+production, public deploy, legal launch) remains **not started** and gated on counsel +
+explicit go-ahead (CM10/CM14+). Not merged to `main`; not "Mega Module 5". See
+[FINAL_CERTIFICATION.md](docs/creator-marketplace/FINAL_CERTIFICATION.md).
+
 ## Open (deferred to later modules)
 
 | ID | Open decision | Blocks | Notes |

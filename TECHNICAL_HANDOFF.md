@@ -94,13 +94,23 @@ infrastructure.
 
 ## Future expansion (documented, not built): Creator Marketplace
 
-A separate, architecture-locked expansion is fully documented in
-[docs/creator-marketplace/](docs/creator-marketplace/README.md): a **second economic system**
-where creators are paid per **approved deliverable** (transparent 2%–4% platform fee),
-reusing the existing ledger (new *reasons*, not a new ledger), RBAC, `PayoutRail`, fraud,
-persistence seam, and web shell. It is **documentation only — not implemented**, is **not**
-Mega Module 5, and is **not required** for current local usability. Its own **CM0–CM16** phase
-plan, reuse map, and money/rights **counsel gates** are in that folder
-([IMPLEMENTATION_ROADMAP.md](docs/creator-marketplace/IMPLEMENTATION_ROADMAP.md),
-[ARCHITECTURE_RECONCILIATION.md](docs/creator-marketplace/ARCHITECTURE_RECONCILIATION.md)).
-Do not begin it without explicit go-ahead.
+A **second economic system** where creators are paid per **approved deliverable** (transparent
+2%–4% platform fee), reusing the existing money discipline, RBAC, `PayoutRail`, fraud,
+persistence seam, and web shell. Fully documented in
+[docs/creator-marketplace/](docs/creator-marketplace/README.md) and **built locally through
+technical certification** on branch `feat/creator-marketplace` (not merged; not Mega Module 5).
+
+**Run it:** `pnpm --filter @partnera/web serve`, then sign in as `cora@creators.test`
+(Creator Portal), `owner@primebuild.test` (Business → Creators section), or
+`brian@primebuild.test` (Affiliate → Content Library). Package map: `@partnera/creator-marketplace`
+(engine) + `creator` repo in `persistence` + `CreatorService` in `application` + `pages/creator.tsx`
+in `web`. Key entry points: `CreatorService` (`application/src/services/creator.ts`),
+`CreatorRepository` (`persistence/src/repositories/creator.ts`), money engine
+(`creator-marketplace/src/money.ts`).
+
+**Simulated (local only):** payouts (`SIMULATED-*` ref), AI review (deterministic mock,
+`authorizesPayment:false`), content storage (metadata only). **External activation** — real
+providers, money, Shopify install, deploy, legal launch — is **not started** and gated on
+counsel + explicit go-ahead (CM10/CM14+). See
+[IMPLEMENTATION_STATUS.md](docs/creator-marketplace/IMPLEMENTATION_STATUS.md) and
+[FINAL_CERTIFICATION.md](docs/creator-marketplace/FINAL_CERTIFICATION.md).

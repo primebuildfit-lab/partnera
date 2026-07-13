@@ -7,7 +7,7 @@
 >
 > Maintenance rule: update this file whenever maturity, status, decisions, or "next work"
 > change. Keep it dense. Do not let it drift.
-> **Last verified:** 2026-07-12 (Windows desktop integration — icon, Desktop/Start Menu shortcuts, PWA; 17 packages, 105 tests green; launched via shortcut on Windows 11). Plus **Creator Marketplace architecture lock** — a docs-only, not-built future expansion ([docs/creator-marketplace/](creator-marketplace/README.md)); no code/schema/behaviour changed.
+> **Last verified:** 2026-07-12 (Windows desktop integration — icon, Desktop/Start Menu shortcuts, PWA; 17 packages, 105 tests green; launched via shortcut on Windows 11). Plus **Creator Marketplace** — architecture-locked and **built locally** on branch `feat/creator-marketplace` (18 packages, 154 tests green; payouts/AI/storage simulated; external activation gated). See [creator-marketplace/FINAL_CERTIFICATION.md](creator-marketplace/FINAL_CERTIFICATION.md).
 
 ---
 
@@ -285,8 +285,16 @@ permission-gated reads. 98 green tests. **No engine interface changed.** Run: `p
   **second economic system** (creators paid per **approved deliverable**; transparent 2%–4%
   platform fee) beside the affiliate system, reusing the tenancy/identity/**append-only ledger**
   (new *reasons*, not a new ledger)/`PayoutRail`/fraud/persistence/web spine. Decisions
-  **D-300–D-320** (+ provisional D-330–D-336). **Implementation not started; no code/schema/
-  behaviour changed.** It is **not** "Mega Module 5 — Live Infrastructure & Pilot" (which
-  remains the next affiliate-core step) and is **not required** for current local usability.
+  **D-300–D-320** (+ provisional D-330–D-336). It is **not** "Mega Module 5 — Live
+  Infrastructure & Pilot" (which remains the next affiliate-core step).
+- **2026-07-12 — Creator Marketplace built LOCALLY (branch `feat/creator-marketplace`).**
+  New `@partnera/creator-marketplace` engine → persistence (`CreatorRepository`, 16 collections)
+  → `CreatorService` (permission-aware, full spine) → a **"creator" web scope** + business
+  Creators section + affiliate Content Library. Demo seed runs the real creator spine; verified
+  live over HTTP incl. **persistence across restart**. **18 packages, 154 tests green.** Payouts,
+  AI review, and content storage are **simulated + labelled**; **external activation (real money,
+  providers, Shopify, deploy, legal) not started** — gated (D-321). Certified **READY FOR LOCAL
+  USE** ([FINAL_CERTIFICATION.md](creator-marketplace/FINAL_CERTIFICATION.md)). Not merged to
+  `main`; not MM5.
 
 *(Full history: git log + DECISIONS.md. Do not duplicate it here.)*

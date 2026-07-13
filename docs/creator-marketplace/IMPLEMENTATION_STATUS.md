@@ -60,10 +60,10 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
 | P10 | AI-assisted review preparation (mock) | ✅ |
 | P11 | Payment & fee engine (simulated) | ✅ |
 | P12 | Notifications & analytics | 🟡 (events emitted + role reads; dashboards partial) |
-| P13 | Shopify preparation (contracts/runbooks only) | ⬜ |
-| P14 | Local installation | ⬜ |
-| P15 | Deep QA (detect → correct → certify) | ⬜ |
-| P16 | Technical certification | ⬜ |
+| P13 | Shopify preparation (contracts/runbooks only) | 🟡 (design locked in SHOPIFY_INTEGRATION.md; no code — correct per scope) |
+| P14 | Local installation | ✅ (seed + persistence + restart verified over HTTP) |
+| P15 | Deep QA (detect → correct → certify) | ✅ (verify green; live HTTP drive; invariant audit) |
+| P16 | Technical certification | ✅ READY FOR LOCAL USE |
 
 ## Per-phase log
 
@@ -144,8 +144,22 @@ affiliate+commission). Documented in [PAYMENTS_AND_FEES.md](PAYMENTS_AND_FEES.md
   prep, P-analytics dashboards) — tracked, not built.
 - **Verification:** 24 files, **154 tests**, `pnpm verify` exit 0 (3 pre-existing warnings).
 
-*(Phases below are appended as they land, each with files / tests / assumptions / blockers /
-verification, and each committed as a milestone keeping `pnpm verify` green.)*
+### P14–P16 ✅ Local installation, QA, certification
+- **P14:** the creator module runs inside the existing local app (`pnpm --filter @partnera/web
+  serve` / launcher). Seed runs the real creator spine; **verified live over HTTP**: creator
+  portal (earnings $150 simulated), business review queue + payments, affiliate rank-unlocked
+  library; a live approve created an authorizable payable; **restart loaded existing data and
+  the payable persisted** (durable `.partnera/data.json` covers all creator collections).
+- **P15:** three-pass QA — `pnpm verify` green (typecheck+lint+build+154 tests); live HTTP
+  drive of every new surface; invariant/security audit (see certification §5). No Critical/High.
+- **P16:** [FINAL_CERTIFICATION.md](FINAL_CERTIFICATION.md) → **CREATOR MARKETPLACE READY FOR
+  LOCAL USE**. Payouts/AI/storage simulated + labelled; external activation not started.
+
+## Summary
+Local build complete through certification: pure-domain engine → persistence → permission-aware
+services → UI across creator/business/affiliate → local install + persistence, all green and
+verified. **External activation (real money, providers, Shopify, deployment, legal) not started
+— by design.**
 
 ## Stop line (never crossed locally)
 Real payment providers · real money movement · real payout credentials · Shopify production /

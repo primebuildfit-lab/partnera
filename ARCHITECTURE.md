@@ -106,6 +106,13 @@ data-driven RBAC, **append-only ledger** (new payment/fee *reasons*, **not a new
 `PayoutRail`, fraud engine, notifications, analytics, persistence seam, application/authz
 layer, and SSR web shell. New engines are added only where the affiliate spine has no analogue
 (creator identity, opportunity/submission/review, AI-review seam, content library + rank
-unlocks, page builder). Shopify remains an **adapter**. It is **not implemented** and is
-separate from "Mega Module 5 — Live Infrastructure & Pilot". Reuse/conflict map:
+unlocks, page builder). Shopify remains an **adapter**, separate from "Mega Module 5 — Live
+Infrastructure & Pilot". Reuse/conflict map:
 [docs/creator-marketplace/ARCHITECTURE_RECONCILIATION.md](docs/creator-marketplace/ARCHITECTURE_RECONCILIATION.md).
+
+**Local build status:** implemented on branch `feat/creator-marketplace` (new
+`@partnera/creator-marketplace` engine → persistence → application services → a "creator" web
+scope), reusing this architecture exactly as designed — a distinct **append-only creator-payment
+stream** (same discipline as the commission ledger, mirroring the payout stream), the existing
+`RelationalStore`/`UnitOfWork`, `ServiceBase` security spine, and data-driven RBAC. Payouts/AI/
+storage are simulated; external activation is gated. 18 packages, 154 tests green.
