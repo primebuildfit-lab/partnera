@@ -13,6 +13,7 @@ import { renderAdmin } from "./pages/admin";
 import { renderCreator } from "./pages/creator";
 import { loginPage } from "./pages/login";
 import { ICON_PNG_BASE64 } from "./brand-icon";
+import { healthReport, readyReport } from "./observability";
 
 /** The installable PWA manifest — gives the app its own window, name, and icon. */
 const MANIFEST = JSON.stringify({
@@ -66,6 +67,11 @@ const html = (status: number, body: string): WebResponse => ({
   headers: { "content-type": "text/html; charset=utf-8" },
   body,
 });
+const jsonResponse = (status: number, body: unknown): WebResponse => ({
+  status,
+  headers: { "content-type": "application/json; charset=utf-8" },
+  body: JSON.stringify(body),
+});
 const redirect = (location: string, cookie?: string): WebResponse => ({
   status: 303,
   headers: cookie ? { location, "set-cookie": cookie } : { location },
@@ -80,6 +86,15 @@ export async function handle(world: DemoWorld, req: WebRequest): Promise<WebResp
   // Public static assets (icon, manifest) — no session required.
   const asset = staticAsset(req.path);
   if (asset) return asset;
+
+  // Health / readiness — public, no secrets, for the productive host + probes.
+  if (req.path === "/health" || req.path === "/healthz") {
+    return jsonResponse(200, healthReport(world));
+  }
+  if (req.path === "/ready" || req.path === "/readyz") {
+    const r = readyReport(world);
+    return jsonResponse(r.ready ? 200 : 503, r);
+  }
 
   const sessionId = req.cookies[SESSION_COOKIE];
   const session = sessionId ? world.sessionStore.get(sessionId) : undefined;

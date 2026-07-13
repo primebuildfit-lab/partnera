@@ -321,6 +321,33 @@ describe("delivery — Creator Marketplace surfaces (real services)", () => {
   });
 });
 
+describe("delivery — health / readiness / observability", () => {
+  it("serves /health and /ready as public JSON without secrets", async () => {
+    const world = await createDemoWorld();
+    const health = await handle(world, req({ path: "/health" }));
+    expect(health.status).toBe(200);
+    expect(health.headers["content-type"]).toContain("json");
+    const h = JSON.parse(health.body);
+    expect(h.status).toBe("ok");
+    expect(h.persistence).toBe("in-memory");
+    const ready = await handle(world, req({ path: "/ready" }));
+    expect(ready.status).toBe(200);
+    expect(JSON.parse(ready.body).ready).toBe(true);
+    // No secret-ish tokens leaked.
+    expect(health.body).not.toMatch(/secret|token|database_url/i);
+  });
+
+  it("redactSecrets masks sensitive keys and token strings", async () => {
+    const { redactSecrets, logLine } = await import("./observability");
+    const out = redactSecrets({ apiKey: "abc", nested: { token: "shpat_live_123", url: "postgres://u:p@h/db" }, safe: "ok" }) as Record<string, unknown>;
+    expect(out.apiKey).toBe("***");
+    expect((out.nested as Record<string, unknown>).token).toBe("***");
+    const line = logLine("info", "test", { access_token: "shpat_secret", note: "postgres://u:p@h/db here" });
+    expect(line).not.toContain("shpat_secret");
+    expect(line).toContain("postgres://***");
+  });
+});
+
 describe("delivery — PWA / desktop assets", () => {
   it("serves the web manifest (installable)", async () => {
     const world = await createDemoWorld();
