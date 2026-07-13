@@ -2,6 +2,7 @@ import {
   type BusinessId,
   type MembershipId,
   type OrganizationId,
+  type RequestContext,
   type RoleId,
   type TenantId,
   type UserId,
@@ -103,6 +104,7 @@ export class InstallationService {
       organizationId,
       status: "installed",
       scopes: input.scopes,
+      ownerUserId: owner.id,
       tokenRef: input.tokenRef,
       installedAt: now,
       updatedAt: now,
@@ -121,6 +123,22 @@ export class InstallationService {
     const i = this.uow.shopify.getInstallationByShop(shop);
     if (!i || i.status === "uninstalled") return null;
     return { shop, tenantId: i.tenantId, businessId: i.businessId };
+  }
+
+  /**
+   * Build a `RequestContext` from a **verified** shop (from a session token / HMAC).
+   * The tenant + actor come from the installation record — never from the browser.
+   * Returns null for an unknown/uninstalled shop.
+   */
+  resolveRequestContext(shop: ShopDomain, requestId: string): RequestContext | null {
+    const i = this.uow.shopify.getInstallationByShop(shop);
+    if (!i || i.status === "uninstalled" || !i.ownerUserId) return null;
+    return {
+      tenantId: i.tenantId,
+      actorUserId: asId<UserId>(i.ownerUserId),
+      isPlatformOperator: false,
+      requestId,
+    };
   }
 
   /** Handle app/uninstalled: mark uninstalled (data retained; reinstall restores). */

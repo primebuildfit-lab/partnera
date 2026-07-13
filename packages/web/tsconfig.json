@@ -12,6 +12,7 @@
   "references": [
     { "path": "../core" },
     { "path": "../creator-marketplace" },
+    { "path": "../shopify" },
     { "path": "../auth" },
     { "path": "../offer-engine" },
     { "path": "../tracking-engine" },

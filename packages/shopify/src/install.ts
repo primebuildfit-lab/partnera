@@ -20,6 +20,8 @@ export interface ShopifyInstallation {
   readonly organizationId: OrganizationId;
   readonly status: InstallationStatus;
   readonly scopes: string;
+  /** The Partnera owner user resolved at install (for embedded session context). */
+  readonly ownerUserId: string | null;
   /** Reference/handle for the encrypted offline token — never the token itself. */
   readonly tokenRef: string | null;
   readonly installedAt: Date;

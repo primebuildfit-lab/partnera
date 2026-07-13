@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage } from "node:http";
 import { join } from "node:path";
 import { handle, type WebRequest } from "./app";
 import { createLocalWorld, type LocalWorld } from "./localWorld";
+import { dispatchShopify, shopifyRuntimeFromEnv } from "./shopify-routes";
 
 /**
  * The local HTTP host for daily use — Node built-ins only (no web framework).
@@ -43,16 +44,43 @@ function parseForm(body: string): Record<string, string> {
 }
 
 export function startServer(local: LocalWorld, port: number): void {
+  const shopify = shopifyRuntimeFromEnv(process.env, port);
   const server = createServer((req, res) => {
     void (async () => {
       const url = new URL(req.url ?? "/", "http://localhost");
       const isPost = req.method === "POST";
       const body = isPost ? await readBody(req) : "";
+      const cookies = parseCookies(req.headers.cookie);
+
+      // Shopify lifecycle routes (raw body + headers needed for HMAC).
+      const shopifyRes = await dispatchShopify(
+        local.world.services,
+        shopify,
+        req.method ?? "GET",
+        url.pathname,
+        url.searchParams,
+        req.headers as Record<string, string | undefined>,
+        body,
+        cookies,
+      );
+      if (shopifyRes) {
+        if (isPost) {
+          try {
+            local.save();
+          } catch {
+            /* best-effort */
+          }
+        }
+        res.writeHead(shopifyRes.status, { ...shopifyRes.headers });
+        res.end(shopifyRes.body);
+        return;
+      }
+
       const webReq: WebRequest = {
         method: req.method ?? "GET",
         path: url.pathname,
         query: url.searchParams,
-        cookies: parseCookies(req.headers.cookie),
+        cookies,
         form: parseForm(body),
       };
       const response = await handle(local.world, webReq);
