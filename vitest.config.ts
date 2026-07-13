@@ -24,6 +24,7 @@ export default defineConfig({
       "@partnera/core": pkg("core"),
       "@partnera/creator-marketplace": pkg("creator-marketplace"),
       "@partnera/shopify": pkg("shopify"),
+      "@partnera/platform-finance": pkg("platform-finance"),
       "@partnera/auth": pkg("auth"),
       "@partnera/offer-engine": pkg("offer-engine"),
       "@partnera/tracking-engine": pkg("tracking-engine"),

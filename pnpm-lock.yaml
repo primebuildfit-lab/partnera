@@ -188,6 +188,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/platform-finance:
+    dependencies:
+      '@partnera/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/shopify:
     dependencies:
       '@partnera/core':

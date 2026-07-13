@@ -5,6 +5,7 @@
     { "path": "packages/core" },
     { "path": "packages/creator-marketplace" },
     { "path": "packages/shopify" },
+    { "path": "packages/platform-finance" },
     { "path": "packages/auth" },
     { "path": "packages/offer-engine" },
     { "path": "packages/tracking-engine" },
