@@ -234,6 +234,31 @@ Turned the technically-complete module into a clear, professional, easy-to-opera
 Deferred (non-blocking): business content-library grid/filters, admin promo/plan consoles,
 opportunity-creation wizard/templates. External gates unchanged.
 
+---
+
+## Phase 4 — Pilot Data Synchronization & Operational Readiness (Day 1.13) ✅
+
+Verified that every pilot decision/config is a **persisted record**, not a UI/seed default;
+converted the two that weren't. **27 packages / 189 tests green; live backup→edit→restart→restore
+verified.**
+
+### Delivered
+- **Persisted platform-fee rate** (`program_fee_settings`, editable, validated 2–4%) — replaced
+  the hardcoded `300` across snapshot/exposure/UI; **persisted operational pilot checklist**
+  (`pilot_checklists`) surviving restart.
+- **Admin Data status** view (`/admin/data`): storage mode/file/last-save, record counts,
+  PrimeBuild pilot status, live **integrity check** (deterministic, reports-not-deletes),
+  restore availability — plain language, no secrets.
+- **Backup/restore** launcher commands (`partnera backup` / `restore [file]`) + docs.
+- New doc [PRIMEBUILD_PILOT_DATA_STATUS.md](PRIMEBUILD_PILOT_DATA_STATUS.md); certification §10.
+- +12 tests (`creator-persistence.test.ts` snapshot round-trip + isolation + integrity; web:
+  checklist persistence, data-status, fee editor).
+
+### Verdict
+Final gate met: pilot config persisted, no important UI-only value, survives restart, backup/
+restore work, no duplicates, tenant isolation intact, Critical/High = 0, green. External gates
+unchanged and not started.
+
 ## Stop line (never crossed locally)
 Real payment providers · real money movement · real payout credentials · Shopify production /
 store install · external AI providers · public deployment · real creator personal/financial

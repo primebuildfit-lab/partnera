@@ -70,6 +70,18 @@ Creators → **Waiting Queue** lists items `waiting_for_budget` / `waiting_for_c
 `internal_only` etc. Actions: **Promote to review**, **Keep internal**, **Archive**. Nothing is
 promised payment while waiting; creators see honest statuses.
 
+## Backup, restore & data status
+
+- **Back up** before editing pilot data: `partnera backup` → `.partnera/backups/data-<ts>.json`.
+- **Restore**: `partnera restore` (newest) or `partnera restore data-<ts>.json` (app stopped).
+- **Data status**: sign in as admin → **Admin → Data status** (`/admin/data`) — storage mode,
+  data-file location, last save, record counts, PrimeBuild pilot status, and a live integrity
+  check. Full detail: [PRIMEBUILD_PILOT_DATA_STATUS.md](PRIMEBUILD_PILOT_DATA_STATUS.md).
+- **Operational pilot checklist**: Business → Creators → **Pilot checklist** — 11 go-live items;
+  progress is persisted and survives restart.
+- The **platform-fee %** is now editable per program (Program Setup → Platform fee, 2–4%) and is
+  a persisted record that drives every money display and the acceptance snapshot.
+
 ## What stays simulated / disconnected
 
 Payouts (`SIMULATED-*`), AI review (deterministic mock), content storage (metadata only),

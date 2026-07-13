@@ -168,6 +168,27 @@ per-role verdict: [UX_AUDIT.md](UX_AUDIT.md) · [UX_RELEASE_STATUS.md](UX_RELEAS
 - Accessibility blockers cleared (skip link, landmarks, labels, keyboard-native confirm): **✅**
 - Tests/build green: **✅** · Persistence preserved: **✅**
 
+## 10. Day 1.13 — Pilot Data Synchronization & Operational Readiness
+
+**Build:** 27 test-files / **189 tests** green. Live cycle verified: **back up → edit fee 4% +
+budget $999 + tick checklist → restart (survived) → restore original (recovered)**; Admin **Data
+status** renders (Local file / integrity OK / counts). Detail:
+[PRIMEBUILD_PILOT_DATA_STATUS.md](PRIMEBUILD_PILOT_DATA_STATUS.md).
+
+### Persistence completeness
+- **Platform-fee rate** is now a persisted, editable record (`program_fee_settings`, validated
+  2–4%) driving the acceptance snapshot, exposure, and UI — **removed the hardcoded 300**.
+- **Operational pilot checklist** persisted per business (`pilot_checklists`) — was UI/cookie.
+- All pilot config (scheme/categories/payments/ordering/capacity/budget/fee/trial/dispositions/
+  payments/assets/licenses/audit) round-trips through the durable snapshot (test + live).
+- **Integrity check** (deterministic, read-only): 0 issues; reports, never deletes.
+- **Backup/restore** launcher commands added and verified.
+
+### Final gate checklist
+- PrimeBuild pilot configuration persisted: **✅** · No important value UI-only: **✅**
+- Survives restart: **✅** · Backup & restore work: **✅** · No duplicate records: **✅**
+- Tenant isolation intact: **✅** · Critical: **0** · High: **0** · Tests/build green: **✅**
+
 ## Final decision
 
 > ## PARTNERA READY FOR REAL-WORLD LOCAL PILOT

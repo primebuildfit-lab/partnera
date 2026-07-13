@@ -116,6 +116,14 @@ Workspace shows two advisory AI scores + a category selector; confirming a categ
 `saveScheme` / `reviewWithScheme` / `capacityGate` / `computeExposure`. Pilot walkthrough:
 [docs/creator-marketplace/LOCAL_PILOT_GUIDE.md](docs/creator-marketplace/LOCAL_PILOT_GUIDE.md).
 
+**Pilot data & ops:** the **platform-fee rate** is a persisted, editable record
+(`program_fee_settings`, 2–4%) — `getFeeConfig`/`setFeeRate`; it drives the acceptance snapshot,
+`exposureFor`, and money displays (no hardcoded rate). The **operational pilot checklist** is
+persisted (`pilot_checklists`) — `getPilotChecklist`/`setPilotItem`. Admin → **Data status**
+(`/admin/data`) shows storage/counts/`integrityCheck` (deterministic, reports-not-deletes).
+**Backup/restore:** `partnera backup` / `partnera restore [file]` (→ `.partnera/backups/`). See
+[docs/creator-marketplace/PRIMEBUILD_PILOT_DATA_STATUS.md](docs/creator-marketplace/PRIMEBUILD_PILOT_DATA_STATUS.md).
+
 **Simulated (local only):** payouts (`SIMULATED-*` ref), AI review (deterministic mock,
 `authorizesPayment:false`), content storage (metadata only). **External activation** — real
 providers, money, Shopify install, deploy, legal launch — is **not started** and gated on

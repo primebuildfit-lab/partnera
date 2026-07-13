@@ -2,6 +2,28 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-13 — Creator: Pilot Data Synchronization & Operational Readiness (branch)
+
+Verified every PrimeBuild pilot decision/config is a **persisted record**, not a UI/seed default;
+converted the two that weren't. No external services; `main` untouched.
+
+### Added / changed
+- **Persisted platform-fee rate** (`program_fee_settings`, editable per program, validated 2–4%)
+  — now drives the acceptance snapshot, exposure, and every money display; **removed the
+  hardcoded 300** in service + UI. Config → Program Setup → **Platform fee** editor.
+- **Persisted operational pilot checklist** (`pilot_checklists`, per business) with an in-app
+  **Pilot checklist** page — progress survives restart (was UI/cookie).
+- **Admin Data status** (`/admin/data`): storage mode/file/last-save, record counts, PrimeBuild
+  pilot status, live **integrity check** (deterministic; reports, never deletes), restore
+  availability — plain language, no secrets/private content.
+- **Backup/restore** launcher commands: `partnera backup` / `partnera restore [file]` (+ docs).
+- New doc `PRIMEBUILD_PILOT_DATA_STATUS.md`; certification §10.
+
+### Tests
+- +12 (`creator-persistence.test.ts`: snapshot round-trip, fee validation/edit, no global-price
+  leakage, cross-tenant checklist isolation, integrity; web: checklist persistence, data-status,
+  fee editor). **189 total, green.** Live backup→edit→restart→restore verified.
+
 ## [Unreleased] — 2026-07-13 — Creator: UX Simplification & Commercial Readiness (branch)
 
 Made the local Creator Marketplace a clear, professional, operable product. No architecture
