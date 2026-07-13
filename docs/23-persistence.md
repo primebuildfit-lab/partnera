@@ -94,3 +94,16 @@ Enforced centrally in `ServiceBase`:
 Live Postgres/Prisma wiring, a NestJS host, an auth provider, a real commerce
 adapter, and real payout rails — each is a thin, documented activation behind an
 already-defined contract (D-207, D-210, D-104, D-114, D-105).
+
+## Actualización (Fase de Activación, 2026-07-13)
+
+El runtime real usa **59 colecciones** (`UnitOfWork`); inventario exacto en
+[../docs/PERSISTENCE_INVENTORY.md](PERSISTENCE_INVENTORY.md). El modelo Prisma canónico se
+**extendió a 60 modelos** para cubrirlas todas: los 31 agregados nuevos (Creator Marketplace +
+Shopify) se modelan como **filas JSONB indexadas** (columnas clave/tenant/únicas reales +
+`data JSONB` + `version`), con `sql/0002_creator_shopify.sql` (tablas + índices + triggers
+append-only). La **selección de persistencia es explícita** — `PARTNERA_PERSISTENCE=memory|postgres`
+— con **hard-fail y sin fallback silencioso** (`packages/persistence/src/config.ts`,
+`validatePersistenceConfig`/`createUnitOfWork`). El **modo local (memoria + JSON) permanece**. Una
+**suite de contrato compartida** (`src/contract/store-contract.ts`) valida ambos backends. El cliente
+Prisma generado + Postgres real son gate de despliegue/entorno. Decisión **D-325**.

@@ -96,3 +96,11 @@ Entities are grouped by engine. Each lists its purpose, the key attributes it *c
 ## Explicitly out of scope here
 
 Physical schema, storage engine, indexing, sharding/partitioning, exact field types, and PII storage/tokenization strategy — all deferred to the build phase and tracked in [../DECISIONS.md](../DECISIONS.md).
+
+---
+
+> **Nota (2026-07-13):** este documento cubre el **núcleo de afiliados**. El modelo de datos
+> **físico completo** del runtime (59 colecciones, incluyendo Creator Marketplace y Shopify) está en
+> [PERSISTENCE_INVENTORY.md](PERSISTENCE_INVENTORY.md), el esquema Prisma
+> (`packages/persistence/prisma/schema.prisma`, 60 modelos) y
+> [creator-marketplace/DATA_MODEL.md](creator-marketplace/DATA_MODEL.md). Ver decisión D-325.

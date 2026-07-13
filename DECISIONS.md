@@ -255,6 +255,22 @@ plans/trials and disclosed promotional channels exist as local config with **no 
 paid media**. Verified locally: **PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT**
 (176 tests, live + restart). External activation unchanged and not started.
 
+### D-325 ✅ Persistencia alojada: selección explícita de modo + agregados como filas JSONB indexadas
+El runtime tiene **59 colecciones**; el modelo Prisma canónico se extendió para cubrirlas todas
+(60 modelos). Los 31 agregados nuevos (Creator Marketplace + Shopify) se modelan como **filas JSONB
+indexadas**: las columnas clave/tenant/únicas se promueven a columnas Postgres reales e indexadas
+(aislamiento, idempotencia, joins) y el value object completo vive en `data JSONB`. Esto refleja 1:1
+la semántica de fila-completa del `Collection` en memoria, mantiene el **dinero exacto** (minor units
+como string dentro de JSON; nunca float), preserva `Date`, y hace que el driver Prisma sea un mapeo
+mecánico de los mismos ports. `version` respalda concurrencia optimista; las tablas append-only tienen
+triggers UPDATE/DELETE-blocking (`sql/0002_creator_shopify.sql`). **La selección de persistencia es
+explícita** (`PARTNERA_PERSISTENCE` = `memory` | `postgres`) con **hard-fail y sin fallback silencioso**:
+`postgres` exige `DATABASE_URL` + driver; si no, `createUnitOfWork` lanza error. **Los engines nunca
+importan Prisma** (Domain→ports; Persistence-Prisma→implementación de ports). El **modo local
+(memoria+JSON) permanece**. El **cliente Prisma generado + una base Postgres real** son gate de
+entorno/externo (no disponible en esta máquina por bloqueo de install scripts). Ver
+[docs/PERSISTENCE_INVENTORY.md](docs/PERSISTENCE_INVENTORY.md) y `packages/persistence/src/config.ts`.
+
 ### D-324 ✅ Shopify is a reusable adapter package; tenant is resolved from a verified shop only
 The Shopify integration is a new pure-domain adapter (`@partnera/shopify`) reused by the existing
 application/persistence layers — **not a second Partnera codebase**. All request authentication is

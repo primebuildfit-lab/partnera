@@ -2,6 +2,33 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-13 — Activation: hosted-persistence groundwork + host seams (branch)
+
+Prepara Partnera para persistencia alojada y host productivo **sin** reescribir lógica de negocio
+ni conectar servicios externos. Los engines no importan Prisma; el modo local permanece. `main` intacto.
+
+### Added / changed
+- **Prisma schema** extendido a **60 modelos** cubriendo las **59 colecciones** del runtime (los 31
+  agregados nuevos como filas **JSONB indexadas**; dinero exacto, fechas Date, índices tenant/unique/
+  idempotencia). Inventario: `docs/PERSISTENCE_INVENTORY.md`. Migración: `sql/0002_creator_shopify.sql`.
+- **Selección de persistencia explícita** (`@partnera/persistence` `config.ts`): `PARTNERA_PERSISTENCE`
+  = `memory` | `postgres`; `validatePersistenceConfig`/`createUnitOfWork` con **hard-fail y sin fallback
+  silencioso** (postgres exige `DATABASE_URL` + driver).
+- **Suite de contrato compartida** (`src/contract/store-contract.ts`): create/read/unique/tenant-isolation/
+  version-conflict/append-only/idempotencia/rollback/money-round-trip/date-fidelity — probada contra
+  el store en memoria (misma suite para el driver Postgres futuro).
+- **Host/observabilidad:** rutas públicas `/health` + `/ready` (JSON, sin secretos), `redactSecrets` +
+  `logLine` estructurado, `.env.example` (modos + validación de entorno, sin secretos reales).
+- Docs: `PERSISTENCE_INVENTORY.md`, D-325, actualización de `docs/03`/`docs/23`, `ACTIVATION_REPORT.md`.
+
+### Not done — environment/external gates
+Generar el cliente Prisma (install scripts bloqueados en esta máquina) + una base Postgres real;
+host HTTP con framework productivo + rutas OAuth/webhook/app-proxy montadas; UI embebida App Bridge;
+deploy e instalación. Servicios Shopify (install/webhook/onboarding) ya probados (fase anterior).
+
+### Tests
+- +12 (6 contract/config, 6 host/redacción/otros). **218 total, verdes (19 paquetes).**
+
 ## [Unreleased] — 2026-07-13 — Shopify Pilot: adapter + install/tenant provisioning (branch)
 
 Turns Partnera into an installation-ready Shopify app **without** connecting real external

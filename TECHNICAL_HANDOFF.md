@@ -116,6 +116,16 @@ Workspace shows two advisory AI scores + a category selector; confirming a categ
 `saveScheme` / `reviewWithScheme` / `capacityGate` / `computeExposure`. Pilot walkthrough:
 [docs/creator-marketplace/LOCAL_PILOT_GUIDE.md](docs/creator-marketplace/LOCAL_PILOT_GUIDE.md).
 
+**Persistence modes (Activation):** `PARTNERA_PERSISTENCE=memory|postgres` selects the store
+explicitly — `@partnera/persistence` `config.ts` (`resolvePersistenceMode`/`validatePersistenceConfig`/
+`createUnitOfWork`) **hard-fails** on invalid hosted config (postgres needs `DATABASE_URL` + a driver;
+**no silent fallback**). The Prisma schema (`prisma/schema.prisma`, 60 models) + `sql/0002_creator_shopify.sql`
+cover all **59 runtime collections** (inventory `docs/PERSISTENCE_INVENTORY.md`). Shared contract:
+`src/contract/store-contract.ts` (`runStoreContract`) — run vs. memory now, vs. Postgres when its driver
+lands. Engines never import Prisma. Health/readiness: `GET /health`+`/ready`; logs via `redactSecrets`.
+Generating the Prisma client (install scripts blocked here) + a real DB are environment gates
+(`docs/shopify-pilot/ACTIVATION_REPORT.md`).
+
 **Shopify pilot (adapter, local):** `@partnera/shopify` holds the pure primitives — HMAC
 (`verifyWebhookHmac`/`verifyAppProxySignature`/`verifyOAuthHmac`), install lifecycle, idempotent
 webhooks + dead-letter, onboarding, scopes, `validateEnvironment`. `InstallationService.installOrResolve`
