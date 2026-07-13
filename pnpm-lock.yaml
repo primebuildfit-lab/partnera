@@ -77,6 +77,9 @@ importers:
       '@partnera/platform':
         specifier: workspace:*
         version: link:../platform
+      '@partnera/platform-finance':
+        specifier: workspace:*
+        version: link:../platform-finance
       '@partnera/shopify':
         specifier: workspace:*
         version: link:../shopify
@@ -175,6 +178,9 @@ importers:
       '@partnera/platform':
         specifier: workspace:*
         version: link:../platform
+      '@partnera/platform-finance':
+        specifier: workspace:*
+        version: link:../platform-finance
       '@partnera/shopify':
         specifier: workspace:*
         version: link:../shopify
@@ -265,6 +271,9 @@ importers:
       '@partnera/platform':
         specifier: workspace:*
         version: link:../platform
+      '@partnera/platform-finance':
+        specifier: workspace:*
+        version: link:../platform-finance
       '@partnera/shopify':
         specifier: workspace:*
         version: link:../shopify
