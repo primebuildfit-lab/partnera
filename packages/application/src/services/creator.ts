@@ -672,6 +672,28 @@ export class CreatorService extends ServiceBase {
     this.require(ctx, "creator.view");
     return this.uow.creator.listOpportunities(ctx.tenantId);
   }
+  /** Programs for this tenant (UI needs the program to show its scheme/budget). */
+  listPrograms(ctx: RequestContext) {
+    this.require(ctx, "creator.view");
+    return this.uow.creator.listPrograms(ctx.tenantId);
+  }
+  /** Budget + capacity for a program (config surface). */
+  getBudget(ctx: RequestContext, programId: CreatorProgramId) {
+    this.require(ctx, "creator_program.manage");
+    return this.uow.creator.getBudget(ctx.tenantId, programId) ?? null;
+  }
+  /** All submission dispositions for the tenant, joined with submission + creator name. */
+  listDispositionsView(ctx: RequestContext) {
+    this.require(ctx, "submission.review");
+    return this.uow.creator.listDispositions(ctx.tenantId).map((d) => {
+      const submission = this.uow.creator.getSubmission(d.submissionId) ?? null;
+      return {
+        disposition: d,
+        submission,
+        creatorName: submission ? this.creatorDisplayName(submission.creatorId) : d.submissionId,
+      };
+    });
+  }
   /** Public: deliverable specs of an opportunity (shown to creators browsing + businesses). */
   deliverablesFor(_ctx: RequestContext, opportunityId: OpportunityId): DeliverableRequirement[] {
     return this.uow.creator.listDeliverables(opportunityId);
@@ -813,6 +835,19 @@ export class CreatorService extends ServiceBase {
   /** AI advisory recommendation: two scores + the scheme category the score maps to. */
   recommend(ctx: RequestContext, submissionId: SubmissionId): { runId: AIReviewRunId; recommendation: ReviewRecommendation } {
     this.require(ctx, "submission.review");
+    const recommendation = this.computeRecommendation(ctx, submissionId);
+    const runId = this.ids.next<AIReviewRunId>();
+    void this.emit(CREATOR_EVENTS.aiReviewCompleted, ctx, ctx.tenantId, { submissionId, runId, recommendedCategoryKey: recommendation.recommendedCategoryKey, isMock: true });
+    return { runId, recommendation };
+  }
+
+  /** Side-effect-free recommendation for rendering a review workspace. */
+  recommendPreview(ctx: RequestContext, submissionId: SubmissionId): ReviewRecommendation {
+    this.require(ctx, "submission.review");
+    return this.computeRecommendation(ctx, submissionId);
+  }
+
+  private computeRecommendation(ctx: RequestContext, submissionId: SubmissionId): ReviewRecommendation {
     const sub = this.getSubmissionScoped(ctx, submissionId);
     const version = this.uow.creator.listVersions(sub.id).at(-1);
     const deliverable = this.uow.creator.getDeliverable(sub.deliverableId);
@@ -825,8 +860,7 @@ export class CreatorService extends ServiceBase {
     const programId = this.programForSubmissionId(ctx, submissionId);
     const scheme = programId ? this.getScheme(ctx, programId) : null;
     const recommendedCategoryKey = scheme ? (categoryForScore(scheme, two.combinedScore)?.key ?? null) : null;
-    const runId = this.ids.next<AIReviewRunId>();
-    const recommendation: ReviewRecommendation = {
+    return {
       technicalScore: two.technicalScore,
       commercialScore: two.commercialScore,
       combinedScore: two.combinedScore,
@@ -836,8 +870,13 @@ export class CreatorService extends ServiceBase {
       weaknesses: two.weaknesses,
       failedRequirements: two.failedRequirements,
     };
-    void this.emit(CREATOR_EVENTS.aiReviewCompleted, ctx, ctx.tenantId, { submissionId, runId, recommendedCategoryKey, isMock: true });
-    return { runId, recommendation };
+  }
+
+  /** The program's scheme for a submission (UI review workspace needs the categories). */
+  schemeForSubmission(ctx: RequestContext, submissionId: SubmissionId): EvaluationScheme | null {
+    this.require(ctx, "submission.review");
+    const programId = this.programForSubmissionId(ctx, submissionId);
+    return programId ? this.getScheme(ctx, programId) : null;
   }
 
   /**

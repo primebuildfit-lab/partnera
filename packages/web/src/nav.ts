@@ -45,8 +45,10 @@ export const BUSINESS_NAV: NavTree = [
     title: "Creators",
     items: [
       { label: "Creator Dashboard", href: "/business/creators", permission: "creator.view" },
+      { label: "Program Setup", href: "/business/creators/config", permission: "creator_program.manage" },
       { label: "Opportunities", href: "/business/creators/opportunities", permission: "content_opportunity.manage" },
       { label: "Review Queue", href: "/business/creators/submissions", permission: "submission.review" },
+      { label: "Waiting Queue", href: "/business/creators/queue", permission: "submission.review" },
       { label: "Creator Payments", href: "/business/creators/payments", permission: "creator_payment.authorize" },
       { label: "Content Library", href: "/business/creators/library", permission: "content_asset.manage" },
     ],

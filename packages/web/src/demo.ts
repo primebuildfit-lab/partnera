@@ -16,6 +16,12 @@ import {
 } from "@partnera/core";
 import { createServices, type Services } from "@partnera/application";
 import { UnitOfWork } from "@partnera/persistence";
+import {
+  type BusinessPlanId,
+  makeCategory,
+  type PlacementId,
+  type PromotionalChannelId,
+} from "@partnera/creator-marketplace";
 import { type PayoutInstruction, type PayoutRail, type PayoutRailResult } from "@partnera/payment-engine";
 import { DevAuthProvider, InMemorySessionStore } from "./auth";
 
@@ -291,6 +297,41 @@ export function buildDemoRuntime(opts?: { clock?: Clock; ids?: IdGenerator }): D
       durationSec: 28, hasAudio: true, language: "en", note: "First reaction, one take.",
     });
     // (left under_review so the business has a live review queue to work)
+
+    // --- PrimeBuild's OWN configurable program (Part 2/12) ---
+    // These categories + payments belong to PrimeBuild, not Partnera.
+    svc.creator.saveScheme(owner, programId2, [
+      makeCategory({ key: "rejected", name: "Rejected", order: 1, minScore: 0, maxScore: 39, paymentMinor: "0", currency: "USD", payable: false, libraryEligible: true, affiliateEligible: false, color: "#ef4444", description: "Not eligible for payout; may be retained internally." }),
+      makeCategory({ key: "acceptable", name: "Acceptable", order: 2, minScore: 40, maxScore: 64, paymentMinor: "1000", currency: "USD", libraryEligible: true, color: "#f59e0b", description: "Basic usable content." }),
+      makeCategory({ key: "good", name: "Good", order: 3, minScore: 65, maxScore: 84, paymentMinor: "2000", currency: "USD", affiliateEligible: true, color: "#3b82f6", description: "Strong reusable content; affiliate-eligible." }),
+      makeCategory({ key: "excellent", name: "Excellent", order: 4, minScore: 85, maxScore: 100, paymentMinor: "3500", currency: "USD", affiliateEligible: true, color: "#16a34a", description: "Premium; prioritized for affiliate distribution." }),
+    ]);
+    // Budget deliberately tight so the pilot demonstrates a waiting-for-budget item.
+    svc.creator.setBudget(owner, programId2, { totalMinor: "17000", currency: "USD" }); // $170
+    svc.creator.setCapacity(owner, programId2, { maxAccepted: 10, pauseWhenReached: true });
+
+    // Opportunity C — reviewed "Excellent" but over budget → waiting_for_budget.
+    const oppC = svc.creator.createOpportunity(owner, { campaignId, title: "Testimonial (premium)", description: "Authentic testimonial.", eligibility: "open", deliverables: [{ format: "testimonial", paymentMinor: "3500", currency: "USD", minDurationSec: 15, requiresAudio: true, language: "en" }] });
+    await svc.creator.publishOpportunity(owner, oppC.id);
+    const delC = uow.creator.listDeliverables(oppC.id)[0]!;
+    const appC = svc.creator.apply(creator, oppC.id); svc.creator.acceptTerms(creator, appC.id);
+    const subC = await svc.creator.submit(creator, { opportunityId: oppC.id, deliverableId: delC.id, fileName: "testimonial.mp4", durationSec: 40, hasAudio: true, hasCta: true, language: "en", note: "Great story" });
+    await svc.creator.reviewWithScheme(owner, subC.id, { categoryKey: "excellent", accept: true, reason: "Excellent, but reserve budget first.", legalCleared: true });
+
+    // Opportunity D — reviewed "Rejected" category but retained internally (reusable b-roll).
+    const oppD = svc.creator.createOpportunity(owner, { campaignId, title: "Lifestyle b-roll", description: "Ambient lifestyle footage.", eligibility: "open", deliverables: [{ format: "raw_footage", paymentMinor: "0", currency: "USD", language: "en" }] });
+    await svc.creator.publishOpportunity(owner, oppD.id);
+    const delD = uow.creator.listDeliverables(oppD.id)[0]!;
+    const appD = svc.creator.apply(creator, oppD.id); svc.creator.acceptTerms(creator, appD.id);
+    const subD = await svc.creator.submit(creator, { opportunityId: oppD.id, deliverableId: delD.id, fileName: "broll.mp4", durationSec: 12, hasAudio: false, language: "en", note: "Raw ambient" });
+    await svc.creator.reviewWithScheme(owner, subD.id, { categoryKey: "rejected", accept: true, reason: "Off-brief but useful as internal b-roll." });
+
+    // --- Provisional business plans + a disclosed house promotion (Parts 9/10) ---
+    uow.creator.upsertPlan({ id: asId<BusinessPlanId>("plan_starter"), key: "starter", name: "Starter (provisional)", provisional: true, trialDays: 150, maxActivePrograms: 1, submissionsPerMonth: 50, transactionFeeBps: 400, customBranding: false, notes: "Up to 5-month intro trial; trial length configurable, not globally locked." });
+    uow.creator.upsertPlan({ id: asId<BusinessPlanId>("plan_pro"), key: "pro", name: "Pro (provisional)", provisional: true, trialDays: 30, maxActivePrograms: 10, submissionsPerMonth: 1000, transactionFeeBps: 300, customBranding: true, notes: "Reduced fee within the 2-4% range; final price undecided." });
+    uow.creator.upsertTrial({ businessId: tenantId, planKey: "pro", state: "active", startedAt: clock.now(), trialEndsAt: new Date(clock.now().getTime() + 150 * 24 * 60 * 60 * 1000) });
+    uow.creator.createChannel({ id: asId<PromotionalChannelId>("chan_house"), tenantId: null, kind: "house_promotion", name: "Partnera House", active: true, createdAt: clock.now() });
+    uow.creator.createPlacement({ id: asId<PlacementId>("place_1"), channelId: asId<PromotionalChannelId>("chan_house"), tenantId: null, subjectType: "business", subjectId: tenantId, priority: 1, startAt: clock.now(), endAt: new Date(clock.now().getTime() + 30 * 24 * 60 * 60 * 1000), disclosure: "Promoted placement — Partnera house promotion (no paid media).", status: "active", createdAt: clock.now() });
   };
 
   return { world, seed };

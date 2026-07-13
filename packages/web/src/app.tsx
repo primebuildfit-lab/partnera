@@ -1,4 +1,5 @@
 import { DomainError, type ProgramId, asId } from "@partnera/core";
+import { type CreatorProgramId } from "@partnera/creator-marketplace";
 import { Alert, Card } from "@partnera/ui";
 import { type AppScope, buildWebContext, type WebContext } from "./auth";
 import { type DemoWorld } from "./demo";
@@ -243,6 +244,40 @@ async function workflow(world: DemoWorld, ctx: WebContext, req: WebRequest): Pro
       if (kind === "payments" && action === "execute") {
         await services.creator.executePayout(request, asId(id));
         return back("/business/creators/payments", "success", "Payout executed (SIMULATED — no real money).");
+      }
+      // Scheme-driven review: reviewer confirms a category; business config sets the payment.
+      if (kind === "submissions" && action === "review-scheme") {
+        const res = await services.creator.reviewWithScheme(request, asId(id), {
+          categoryKey: req.form.categoryKey ?? "",
+          accept: req.form.accept !== "false",
+          reason: req.form.reason ?? "Reviewed",
+          legalCleared: req.form.legal !== "fail",
+        });
+        const note = res.paymentId ? "Category confirmed; payable created (money not moved)." : `Category confirmed; queue state: ${res.disposition.queueState.replace(/_/g, " ")}.`;
+        return back("/business/creators/submissions", "success", note);
+      }
+      // Program configuration (the business owns its categories, payments, budget).
+      if (kind === "config" && parts[3] === "category") {
+        const programId = asId<CreatorProgramId>(parts[4]!);
+        const scheme = services.creator.getScheme(request, programId);
+        const updated = scheme.categories.map((c) => (c.key === req.form.categoryKey ? { ...c, paymentMinor: String(Math.max(0, Math.round(Number(req.form.paymentMajor ?? "0") * 100))) } : c));
+        services.creator.saveScheme(request, programId, updated);
+        return back("/business/creators/config", "success", "Category payment updated (PrimeBuild configuration).");
+      }
+      if (kind === "config" && parts[3] === "budget") {
+        const programId = asId<CreatorProgramId>(parts[4]!);
+        services.creator.setBudget(request, programId, { totalMinor: String(Math.max(0, Math.round(Number(req.form.totalMajor ?? "0") * 100))), currency: "USD" });
+        return back("/business/creators/config", "success", "Program budget updated.");
+      }
+      // Waiting-queue actions (over-limit content is never discarded).
+      if (kind === "queue" && action === "promote") {
+        services.creator.promoteFromQueue(request, asId(id));
+        return back("/business/creators/queue", "success", "Promoted back into review.");
+      }
+      if (kind === "queue" && (action === "archive" || action === "irrelevant" || action === "internal")) {
+        const state = action === "archive" ? "archived" : action === "irrelevant" ? "irrelevant" : "internal_only";
+        services.creator.setDisposition(request, asId(id), { queueState: state });
+        return back("/business/creators/queue", "success", `Marked ${state.replace(/_/g, " ")}.`);
       }
     }
 

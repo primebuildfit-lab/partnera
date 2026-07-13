@@ -5,8 +5,12 @@ import {
   type ContentOpportunity,
   type CreatorApplication,
   type CreatorPayment,
+  type CreatorProgramId,
   type Submission,
+  computeFee,
+  paymentForCategory,
 } from "@partnera/creator-marketplace";
+import { Money } from "@partnera/core";
 import { type PageContext } from "../page";
 import { PageHeader, StatTile, StatusBadge, DefinitionList } from "../components";
 import { moneyJson, titleCase } from "../format";
@@ -249,10 +253,14 @@ export async function renderBusinessCreators(pc: PageContext): Promise<ReactNode
   switch (true) {
     case sub === "":
       return businessCreatorDashboard(pc);
+    case sub === "config":
+      return businessProgramConfig(pc);
     case sub === "opportunities":
       return businessOpportunities(pc);
     case sub === "submissions":
       return businessReviewQueue(pc);
+    case sub === "queue":
+      return businessWaitingQueue(pc);
     case sub === "payments":
       return businessPayments(pc);
     case sub === "library":
@@ -321,29 +329,82 @@ function businessOpportunities(pc: PageContext): ReactNode {
 function businessReviewQueue(pc: PageContext): ReactNode {
   const svc = pc.services.creator;
   const queue = svc.reviewQueue(pc.request);
+  const feeBps = 300; // provisional business-paid default (2–4% range)
   return (
     <>
-      <PageHeader title="Review queue" description="Human review. AI review is advisory; approval creates a payable but moves no money." />
+      <PageHeader title="Review workspace" description="Two advisory AI scores; you confirm the category. Your program config sets the payment — AI never sets money, never moves money." />
       <Flash pc={pc} />
+      <Alert intent="info">{CONFIG_NOTICE}</Alert>
       {queue.length === 0 ? (
-        <EmptyState title="Nothing to review" description="Approved and rejected submissions leave the queue." />
+        <EmptyState title="Nothing to review" description="Approved, rejected, and waiting submissions leave the active queue." />
       ) : (
-        <div className="pt-stack">
+        <div className="pt-stack" style={{ marginTop: tokens.space.lg }}>
           {queue.map((s) => {
             const v = svc.versionsFor(pc.request, s.id).at(-1);
+            const rec = svc.recommendPreview(pc.request, s.id);
+            const scheme = svc.schemeForSubmission(pc.request, s.id);
             return (
               <Card key={s.id} title={svc.creatorDisplayName(s.creatorId)}>
-                <DefinitionList items={[
-                  { term: "Submission", value: <StatusBadge status={s.status} /> },
-                  { term: "File", value: v?.fileName ?? "—" },
-                  { term: "Duration", value: v?.durationSec ? `${v.durationSec}s` : "—" },
-                  { term: "Revisions used", value: String(s.revisionsUsed) },
-                ]} />
-                <div className="pt-row" style={{ marginTop: tokens.space.md, gap: tokens.space.sm }}>
-                  {pc.ctx.can("submission.approve") && <PostButton action={`/business/creators/submissions/${s.id}/approve`} label="Approve" intent="success" />}
-                  {pc.ctx.can("submission.request_revision") && <PostButton action={`/business/creators/submissions/${s.id}/revision`} label="Request revision" intent="neutral" variant="outline" />}
-                  {pc.ctx.can("submission.reject") && <PostButton action={`/business/creators/submissions/${s.id}/reject`} label="Reject" intent="danger" variant="ghost" />}
+                <div className="pt-grid cols-2">
+                  <div>
+                    <strong style={{ fontSize: tokens.font.size.sm, color: tokens.color.textMuted }}>Media (demo preview)</strong>
+                    <div style={{ height: 90, background: tokens.color.surfaceMuted ?? "#eee", borderRadius: tokens.radius.md, display: "flex", alignItems: "center", justifyContent: "center", color: tokens.color.textMuted, marginTop: 4 }}>▶ {v?.fileName ?? "clip"}</div>
+                    <DefinitionList items={[
+                      { term: "Duration", value: v?.durationSec ? `${v.durationSec}s` : "—" },
+                      { term: "Audio / CTA", value: `${v?.hasAudio ? "audio" : "no audio"} · ${v?.hasCta ? "CTA" : "no CTA"}` },
+                      { term: "Revisions used", value: String(s.revisionsUsed) },
+                    ]} />
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: tokens.font.size.sm, color: tokens.color.textMuted }}>AI advisory (mock)</strong>
+                    <DefinitionList items={[
+                      { term: "Technical score", value: `${rec.technicalScore}/100` },
+                      { term: "Commercial score", value: `${rec.commercialScore}/100` },
+                      { term: "Confidence", value: `${Math.round(rec.confidence * 100)}%` },
+                      { term: "Recommended", value: rec.recommendedCategoryKey ? titleCase(rec.recommendedCategoryKey) : "—" },
+                      { term: "Strengths", value: rec.strengths.join(", ") || "—" },
+                      { term: "Weaknesses", value: rec.weaknesses.join(", ") || "—" },
+                    ]} />
+                  </div>
                 </div>
+                {scheme && (
+                  <div style={{ marginTop: tokens.space.md, overflowX: "auto" }}>
+                    <table style={{ width: "100%", fontSize: tokens.font.size.sm, borderCollapse: "collapse" }}>
+                      <thead><tr style={{ textAlign: "left", color: tokens.color.textMuted }}><th>Category</th><th>Creator payment</th><th>Partnera fee ({(feeBps / 100).toFixed(0)}%)</th><th>Business total</th><th>Creator net</th></tr></thead>
+                      <tbody>
+                        {scheme.categories.filter((c) => c.active).map((c) => {
+                          const p = paymentForCategory(scheme, c.key);
+                          const gross = p.amount ? Money.fromJSON(p.amount) : Money.zero(c.currency);
+                          const fee = computeFee(gross, { rateBps: feeBps, payer: "business", configVersion: 1, snapshotAt: new Date() });
+                          return (
+                            <tr key={c.key} style={{ borderTop: `1px solid ${tokens.color.border}` }}>
+                              <td>{c.name}</td>
+                              <td>{p.payable ? moneyJson(gross.toJSON()) : "—"}</td>
+                              <td>{p.payable ? moneyJson(fee.fee.toJSON()) : "—"}</td>
+                              <td>{p.payable ? moneyJson(fee.businessCost.toJSON()) : "—"}</td>
+                              <td>{p.payable ? moneyJson(fee.creatorNet.toJSON()) : "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {pc.ctx.can("submission.approve") && scheme && (
+                  <form method="post" action={`/business/creators/submissions/${s.id}/review-scheme`} className="pt-row" style={{ marginTop: tokens.space.md, gap: tokens.space.sm, alignItems: "flex-end" }}>
+                    <Field label="Confirm category" htmlFor={`cat_${s.id}`}>
+                      <select id={`cat_${s.id}`} name="categoryKey" defaultValue={rec.recommendedCategoryKey ?? scheme.categories[0]?.key} style={{ padding: "6px 8px", borderRadius: tokens.radius.md, border: `1px solid ${tokens.color.border}` }}>
+                        {scheme.categories.filter((c) => c.active).map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
+                      </select>
+                    </Field>
+                    <Button type="submit" size="sm" intent="success">Confirm category</Button>
+                  </form>
+                )}
+                <div className="pt-row" style={{ marginTop: tokens.space.sm, gap: tokens.space.sm }}>
+                  {pc.ctx.can("submission.request_revision") && <PostButton action={`/business/creators/submissions/${s.id}/revision`} label="Request revision" intent="neutral" variant="outline" />}
+                  {pc.ctx.can("submission.reject") && <PostButton action={`/business/creators/submissions/${s.id}/reject`} label="Reject (no retain)" intent="danger" variant="ghost" />}
+                </div>
+                <DemoNote>Confirming a category applies your configured payment and routes over-budget/over-capacity items to the waiting queue (never auto-rejected).</DemoNote>
               </Card>
             );
           })}
@@ -421,6 +482,104 @@ function businessLibrary(pc: PageContext): ReactNode {
           )}
         </Card>
       </div>
+    </>
+  );
+}
+
+const CONFIG_NOTICE = "Payments and evaluation categories are configured by this business. Partnera does not determine creator compensation — it charges a separate, transparent transaction fee (2%–4%).";
+
+function businessProgramConfig(pc: PageContext): ReactNode {
+  const svc = pc.services.creator;
+  const programs = svc.listPrograms(pc.request);
+  const program = programs[0];
+  if (!program) return <EmptyState title="No creator program yet" description="Create a program first." />;
+  const programId = program.id as CreatorProgramId;
+  const scheme = svc.getScheme(pc.request, programId);
+  const budget = svc.getBudget(pc.request, programId);
+  const exposure = svc.exposureFor(pc.request, programId);
+  const columns: Column<(typeof scheme.categories)[number]>[] = [
+    { key: "name", header: "Category", render: (c) => <Badge intent="neutral">{c.name}</Badge> },
+    { key: "band", header: "Score band", render: (c) => `${c.minScore}–${c.maxScore}` },
+    { key: "pay", header: "Payment", render: (c) => (c.payable ? moneyJson({ currency: c.currency, minorUnits: c.paymentMinor }) : "—"), align: "right" },
+    { key: "lib", header: "Library", render: (c) => (c.libraryEligible ? "yes" : "no") },
+    { key: "aff", header: "Affiliate", render: (c) => (c.affiliateEligible ? "yes" : "no") },
+    {
+      key: "edit", header: "Set payment", align: "right",
+      render: (c) => (
+        <form method="post" action={`/business/creators/config/category/${programId}`} className="pt-row" style={{ gap: tokens.space.xs, justifyContent: "flex-end" }}>
+          <input type="hidden" name="categoryKey" value={c.key} />
+          <Input name="paymentMajor" defaultValue={(Number(c.paymentMinor) / 100).toFixed(2)} style={{ width: 80 }} aria-label={`${c.name} payment`} />
+          <Button type="submit" size="sm" variant="outline">Save</Button>
+        </form>
+      ),
+    },
+  ];
+  return (
+    <>
+      <PageHeader title="Program setup" description="Your program's evaluation categories, payments, budget, and capacity — all yours to configure." />
+      <Flash pc={pc} />
+      <Alert intent="info">{CONFIG_NOTICE}</Alert>
+      <div style={{ marginTop: tokens.space.lg }}>
+        <Card title={`Evaluation categories — ${scheme.name}`}>
+          <Table columns={columns} rows={scheme.categories} getRowKey={(c) => c.key} emptyTitle="No categories" />
+          <DemoNote>A category maps a confirmed quality decision to the payment you set. AI recommends a category; it never sets the amount. One or more categories are supported.</DemoNote>
+        </Card>
+      </div>
+      <div className="pt-grid cols-2" style={{ marginTop: tokens.space.lg }}>
+        <Card title="Budget">
+          {budget ? (
+            <DefinitionList items={[
+              { term: "Total", value: moneyJson({ currency: budget.currency, minorUnits: budget.totalMinor }) },
+              { term: "Committed", value: exposure ? moneyJson(exposure.committed) : "—" },
+              { term: "Paid (sim)", value: exposure ? moneyJson(exposure.paid) : "—" },
+              { term: "Remaining", value: exposure ? moneyJson(exposure.remaining) : "—" },
+              { term: "Projected Partnera fee", value: exposure ? moneyJson(exposure.projectedFee) : "—" },
+              { term: "Projected total cost", value: exposure ? moneyJson(exposure.projectedTotalCost) : "—" },
+            ]} />
+          ) : <p style={{ color: tokens.color.textMuted }}>No budget set.</p>}
+          <form method="post" action={`/business/creators/config/budget/${programId}`} className="pt-row" style={{ gap: tokens.space.xs, marginTop: tokens.space.md }}>
+            <Field label="Total budget (USD)" htmlFor="tb"><Input id="tb" name="totalMajor" defaultValue={budget ? (Number(budget.totalMinor) / 100).toFixed(2) : "0"} style={{ width: 120 }} /></Field>
+            <Button type="submit" size="sm" style={{ alignSelf: "flex-end" }}>Save budget</Button>
+          </form>
+        </Card>
+        <Card title="Financial exposure before accepting more">
+          <p style={{ color: tokens.color.textMuted }}>Over-budget or over-capacity content is never auto-rejected — it enters a waiting queue so you can decide.</p>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function businessWaitingQueue(pc: PageContext): ReactNode {
+  const svc = pc.services.creator;
+  const items = svc.listDispositionsView(pc.request);
+  const waiting = items.filter((i) => ["waiting_for_budget", "waiting_for_capacity", "shortlisted", "internal_only", "archived", "irrelevant"].includes(i.disposition.queueState));
+  return (
+    <>
+      <PageHeader title="Waiting queue" description="Content awaiting budget/capacity, or retained for other uses. Honest statuses — nothing here is promised payment." />
+      <Flash pc={pc} />
+      {waiting.length === 0 ? (
+        <EmptyState title="Queue empty" description="Items waiting for budget/capacity or retained internally appear here." />
+      ) : (
+        <div className="pt-stack">
+          {waiting.map(({ disposition: d, creatorName }) => (
+            <Card key={d.submissionId} title={creatorName}>
+              <DefinitionList items={[
+                { term: "Queue state", value: <StatusBadge status={d.queueState} /> },
+                { term: "Category", value: d.categoryKey ? titleCase(d.categoryKey) : "—" },
+                { term: "Would pay", value: d.paymentEligible && d.paymentMinor && d.currency ? moneyJson({ currency: d.currency, minorUnits: d.paymentMinor }) : "—" },
+                { term: "Library", value: titleCase(d.libraryStatus) },
+                { term: "Internal use", value: titleCase(d.internalUse) },
+              ]} />
+              <div className="pt-row" style={{ marginTop: tokens.space.md, gap: tokens.space.sm }}>
+                {(d.queueState === "waiting_for_budget" || d.queueState === "waiting_for_capacity") && <PostButton action={`/business/creators/queue/${d.submissionId}/promote`} label="Promote to review" />}
+                <PostButton action={`/business/creators/queue/${d.submissionId}/internal`} label="Keep internal" variant="outline" intent="neutral" />
+                <PostButton action={`/business/creators/queue/${d.submissionId}/archive`} label="Archive" variant="ghost" intent="neutral" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </>
   );
 }

@@ -187,6 +187,48 @@ describe("delivery — Creator Marketplace surfaces (real services)", () => {
     expect(post.headers.location).toContain("intent=success");
   });
 
+  it("program setup shows PrimeBuild's own categories + payments and the config notice", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business/creators/config", session);
+    expect(res.status).toBe(200);
+    expect(res.body).toContain("Program setup");
+    expect(res.body).toContain("Excellent");
+    expect(res.body).toContain("$35.00"); // PrimeBuild's own payment, not a Partnera global
+    expect(res.body).toContain("Partnera does not determine creator compensation");
+  });
+
+  it("review workspace shows two AI scores and the fee/net breakdown per category", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business/creators/submissions", session);
+    expect(res.body).toContain("Technical score");
+    expect(res.body).toContain("Commercial score");
+    expect(res.body).toContain("Creator net");
+    expect(res.body).toContain("Confirm category");
+  });
+
+  it("waiting queue surfaces the seeded waiting-for-budget and internal-only items honestly", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    const res = await get(world, "/business/creators/queue", session);
+    expect(res.body).toContain("Waiting queue");
+    expect(res.body).toContain("waiting for budget"); // over-budget item, not auto-rejected
+    expect(res.body).toContain("internal only"); // low-score retained content
+  });
+
+  it("a scheme-driven review applies the business payment and can route to waiting", async () => {
+    const world = await createDemoWorld();
+    const session = await login(world, world.users.owner, "business");
+    // The seeded oppB unboxing submission is under_review; confirm "good" ($20) category.
+    const queue = await get(world, "/business/creators/submissions", session);
+    const m = /\/business\/creators\/submissions\/([^/]+)\/review-scheme/.exec(queue.body);
+    expect(m).toBeTruthy();
+    const post = await handle(world, req({ method: "POST", path: m![0], cookies: { pt_session: session }, form: { categoryKey: "good", accept: "true", reason: "solid" } }));
+    expect(post.status).toBe(303);
+    expect(post.headers.location).toContain("intent=success");
+  });
+
   it("enforces separation of duties on creator payment authorization", async () => {
     const world = await createDemoWorld();
     // The owner approved the seeded submission; the owner authorizing its payment must fail SoD.
