@@ -83,7 +83,7 @@ See [docs/23-persistence.md](docs/23-persistence.md).
 | Database | repository ports / `Collection` surface | Prisma-backed store (D-207) |
 | HTTP host | `@partnera/http-api` `Router` | NestJS/Express adapter (D-210) |
 | Auth provider | `RequestContext` + `PermissionEngine` | login/token issuance (D-104) |
-| Commerce | `NormalizedOrder` ingestion | Shopify adapter (D-114) |
+| Commerce | `NormalizedOrder` ingestion | Shopify adapter (D-114) — `@partnera/shopify` (install/HMAC/webhooks/onboarding; tenant from verified shop) |
 | Payout rails | `PayoutRail` | Stripe/PayPal/… (D-105) |
 | Eventing | `EventBus` | durable/queue bus (D-103) |
 | UI host | `@partnera/web` SSR + node host | NestJS/Next + client hydration (D-210/D-215) |

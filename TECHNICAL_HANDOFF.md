@@ -116,6 +116,14 @@ Workspace shows two advisory AI scores + a category selector; confirming a categ
 `saveScheme` / `reviewWithScheme` / `capacityGate` / `computeExposure`. Pilot walkthrough:
 [docs/creator-marketplace/LOCAL_PILOT_GUIDE.md](docs/creator-marketplace/LOCAL_PILOT_GUIDE.md).
 
+**Shopify pilot (adapter, local):** `@partnera/shopify` holds the pure primitives — HMAC
+(`verifyWebhookHmac`/`verifyAppProxySignature`/`verifyOAuthHmac`), install lifecycle, idempotent
+webhooks + dead-letter, onboarding, scopes, `validateEnvironment`. `InstallationService.installOrResolve`
+does idempotent shop→tenant provisioning (generic tenant; tenant resolved from a **verified** shop
+only); `WebhookService` (idempotent + dead-letter); `OnboardingService` (persisted). Real Partner
+app/hosting/DB/deploy/install are **external gates** — see [docs/shopify-pilot/](docs/shopify-pilot/README.md)
+(FINAL_CERTIFICATION + PRIMEBUILD_INSTALLATION list exactly what needs Brian).
+
 **Pilot data & ops:** the **platform-fee rate** is a persisted, editable record
 (`program_fee_settings`, 2–4%) — `getFeeConfig`/`setFeeRate`; it drives the acceptance snapshot,
 `exposureFor`, and money displays (no hardcoded rate). The **operational pilot checklist** is

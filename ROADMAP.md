@@ -110,6 +110,10 @@ library. Partnera earns via a transparent **2%–4%** platform fee.
   homes + first-run checklist + Setup guide, itemised simulated-payment breakdown with
   confirmations. 180 tests green; live daily-use + restart verified; certified **PARTNERA READY
   FOR REAL-WORLD LOCAL PILOT**. Next: real-world Brian usage + final visual/pricing decisions.
+- **Shopify Pilot (same branch):** pure `@partnera/shopify` adapter + idempotent install→tenant
+  provisioning + webhooks/onboarding + env validation; 210 tests green; cross-shop isolation. The
+  real install into PrimeBuild is **external-gated** (Brian's Shopify Partner app + hosting +
+  deploy + consent). Then: embedded UI on the deployed app → real billing/payment/AI → App Store.
 
 ## Cross-phase always-on
 

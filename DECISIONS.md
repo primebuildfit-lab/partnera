@@ -255,6 +255,19 @@ plans/trials and disclosed promotional channels exist as local config with **no 
 paid media**. Verified locally: **PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT**
 (176 tests, live + restart). External activation unchanged and not started.
 
+### D-324 ✅ Shopify is a reusable adapter package; tenant is resolved from a verified shop only
+The Shopify integration is a new pure-domain adapter (`@partnera/shopify`) reused by the existing
+application/persistence layers — **not a second Partnera codebase**. All request authentication is
+constant-time HMAC with an **injected secret** (webhook/app-proxy/OAuth); the merchant tenant is
+resolved **only** from a verified shop (never a browser-supplied value). Install → tenant
+provisioning is **idempotent** and creates a **generic** tenant (no PrimeBuild-specific globals);
+PrimeBuild is simply the first shop through the shared path. Webhooks are idempotent with a
+dead-letter state; onboarding is persisted; environment validation refuses unsafe/mixed config.
+Tokens are never stored in plain form (only a `tokenRef`) or exposed to browsers. Real app
+creation, hosting/DB, deploy, and the live install are **external gates** (Brian's credentials +
+consent). Verified locally: 210 tests, cross-shop isolation. See
+[docs/shopify-pilot/FINAL_CERTIFICATION.md](docs/shopify-pilot/FINAL_CERTIFICATION.md).
+
 ### D-323 ✅ Creator surfaces use plain commercial language; money-moving actions require confirmation
 User-facing pages must not expose internal architecture terms (tenant, ledger, append-only,
 repository, domain event); enforced by an automated no-jargon test. Each role gets a focused

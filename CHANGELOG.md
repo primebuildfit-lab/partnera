@@ -2,6 +2,34 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-13 — Shopify Pilot: adapter + install/tenant provisioning (branch)
+
+Turns Partnera into an installation-ready Shopify app **without** connecting real external
+services. Reuses the existing domain/app/persistence layers — no second codebase. `main` untouched.
+
+### Added
+- **`@partnera/shopify`** (new engine, deps: core only): shop domain normalization; secret-injected
+  constant-time HMAC (`verifyWebhookHmac`/`verifyAppProxySignature`/`verifyOAuthHmac`);
+  least-privilege scopes + upgrade detection; **environment validation** (refuses unsafe/mixed
+  config); install lifecycle; durable **idempotent webhooks + dead-letter**; onboarding state
+  machine; offline/online sessions + tenant resolution; provider-independent **storage/job/billing**
+  contracts (not-connected defaults). 13 tests.
+- **Persistence**: `ShopifyRepository` + 5 collections (installations/sessions/webhooks/onboarding/
+  storage), unique `shop` + webhook idempotency indexes.
+- **Application**: `InstallationService` (idempotent shop→tenant provisioning — generic tenant, **no
+  PrimeBuild globals**; uninstall/reinstall retains data), `WebhookService` (idempotent + dead-letter),
+  `OnboardingService` (persisted, purpose-scoped). 8 tests incl. **cross-shop isolation**.
+- **Docs**: `docs/shopify-pilot/` (README, IMPLEMENTATION_STATUS audit, SHOPIFY_APP_IDENTITY,
+  SCOPES, DEPLOYMENT, WEBHOOKS, SECURITY, PLATFORM_ADMIN, TENANT_MIGRATION, PRIMEBUILD_INSTALLATION,
+  FINAL_CERTIFICATION).
+
+### Not done — external gates (require Brian)
+Real Shopify Partner app + secrets, hosted Postgres + host, deploy, and the live install into
+PrimeBuild (dev clone first). Real money/AI/billing/theme-publish remain disconnected.
+
+### Tests
+- +21 (13 adapter, 8 install/webhook/onboarding). **210 total, green (19 packages).**
+
 ## [Unreleased] — 2026-07-13 — Creator: Pilot Data Synchronization & Operational Readiness (branch)
 
 Verified every PrimeBuild pilot decision/config is a **persisted record**, not a UI/seed default;
