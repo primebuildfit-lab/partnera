@@ -461,3 +461,391 @@ model IdempotencyKey {
   @@id([scope, key])
   @@map("idempotency_keys")
 }
+
+// ===========================================================================
+// Creator Marketplace + Shopify (added in the Activation phase)
+//
+// Modeling decision (D-325): each of these aggregates is stored as an indexed
+// JSONB row — the key/tenant/unique columns are promoted to real, indexed
+// Postgres columns (for isolation, idempotency and joins) while the full value
+// object lives in `data Json`. This mirrors the in-memory Collection whole-row
+// value semantics 1:1, keeps money exact (minorUnits kept as string inside JSON;
+// no float), preserves Date fields, and makes the Prisma-backed store a
+// mechanical map of the same repository ports. `version` backs optimistic
+// concurrency. Append-only tables (marked) get UPDATE/DELETE-blocking triggers
+// in sql/0002_creator_shopify.sql (documented in docs/23-persistence.md).
+// ===========================================================================
+
+// --- Creator Marketplace ---
+
+model CreatorProfile {
+  id        String   @id
+  userId    String   @unique @map("user_id")
+  version   Int      @default(1)
+  data      Json
+  createdAt DateTime @map("created_at")
+  @@map("creator_profiles")
+}
+
+model CreatorCompanyRelationship {
+  creatorId  String   @map("creator_id")
+  businessId String   @map("business_id")
+  version    Int      @default(1)
+  data       Json
+  updatedAt  DateTime @map("updated_at")
+  @@id([creatorId, businessId])
+  @@index([businessId])
+  @@map("creator_relationships")
+}
+
+model CreatorProgram {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  slug       String
+  status     String
+  version    Int      @default(1)
+  data       Json
+  createdAt  DateTime @map("created_at")
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("creator_programs")
+}
+
+model ContentCampaign {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  programId  String   @map("program_id")
+  status     String
+  version    Int      @default(1)
+  data       Json
+  createdAt  DateTime @map("created_at")
+  @@index([tenantId, programId])
+  @@map("content_campaigns")
+}
+
+model ContentOpportunity {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  campaignId String   @map("campaign_id")
+  status     String
+  version    Int      @default(1)
+  data       Json
+  createdAt  DateTime @map("created_at")
+  @@index([tenantId, campaignId])
+  @@index([tenantId, status])
+  @@map("content_opportunities")
+}
+
+model DeliverableRequirement {
+  id            String @id
+  opportunityId String @map("opportunity_id")
+  version       Int    @default(1)
+  data          Json
+  @@index([opportunityId])
+  @@map("deliverable_requirements")
+}
+
+model CreatorApplication {
+  id            String   @id
+  tenantId      String   @map("tenant_id")
+  businessId    String   @map("business_id")
+  opportunityId String   @map("opportunity_id")
+  creatorId     String   @map("creator_id")
+  status        String
+  version       Int      @default(1)
+  data          Json
+  createdAt     DateTime @map("created_at")
+  @@unique([opportunityId, creatorId], name: "opp_creator")
+  @@index([tenantId, creatorId])
+  @@map("creator_applications")
+}
+
+model Submission {
+  id            String   @id
+  tenantId      String   @map("tenant_id")
+  businessId    String   @map("business_id")
+  opportunityId String   @map("opportunity_id")
+  creatorId     String   @map("creator_id")
+  status        String
+  version       Int      @default(1)
+  data          Json
+  createdAt     DateTime @map("created_at")
+  @@index([tenantId, status])
+  @@index([tenantId, creatorId])
+  @@map("submissions")
+}
+
+// append-only
+model SubmissionVersion {
+  id           String   @id
+  submissionId String   @map("submission_id")
+  seq          Int
+  data         Json
+  createdAt    DateTime @map("created_at")
+  @@index([submissionId])
+  @@map("submission_versions")
+}
+
+// append-only
+model SubmissionReview {
+  id           String   @id
+  tenantId     String   @map("tenant_id")
+  submissionId String   @map("submission_id")
+  versionId    String   @map("version_id")
+  decision     String
+  data         Json
+  createdAt    DateTime @map("created_at")
+  @@index([tenantId, submissionId])
+  @@map("submission_reviews")
+}
+
+model ContentAsset {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  campaignId String   @map("campaign_id")
+  creatorId  String   @map("creator_id")
+  status     String
+  version    Int      @default(1)
+  data       Json
+  createdAt  DateTime @map("created_at")
+  @@index([tenantId, status])
+  @@map("content_assets")
+}
+
+model ContentLicense {
+  id      String @id
+  assetId String @unique @map("asset_id")
+  status  String
+  version Int    @default(1)
+  data    Json
+  @@map("content_licenses")
+}
+
+model RankUnlockRule {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  campaignId String?  @map("campaign_id")
+  minRank    String   @map("min_rank")
+  status     String
+  version    Int      @default(1)
+  data       Json
+  createdAt  DateTime @map("created_at")
+  @@index([tenantId])
+  @@map("rank_unlock_rules")
+}
+
+model CreatorPayment {
+  id           String   @id
+  tenantId     String   @map("tenant_id")
+  businessId   String   @map("business_id")
+  creatorId    String   @map("creator_id")
+  submissionId String   @map("submission_id")
+  status       String
+  version      Int      @default(1)
+  data         Json
+  createdAt    DateTime @map("created_at")
+  @@index([tenantId, status])
+  @@index([tenantId, creatorId])
+  @@map("creator_payments")
+}
+
+// append-only (creator-payment money stream; balances derived)
+model CreatorLedgerEvent {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  creatorId  String   @map("creator_id")
+  paymentId  String   @map("payment_id")
+  type       String
+  data       Json
+  occurredAt DateTime @map("occurred_at")
+  @@index([tenantId, paymentId])
+  @@index([tenantId, creatorId])
+  @@map("creator_ledger_events")
+}
+
+model CreatorDispute {
+  id           String   @id
+  tenantId     String   @map("tenant_id")
+  businessId   String   @map("business_id")
+  submissionId String   @map("submission_id")
+  status       String
+  version      Int      @default(1)
+  data         Json
+  createdAt    DateTime @map("created_at")
+  @@index([tenantId, status])
+  @@map("creator_disputes")
+}
+
+model EvaluationScheme {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  programId  String   @unique @map("program_id")
+  version    Int      @default(1)
+  data       Json
+  updatedAt  DateTime @map("updated_at")
+  @@index([tenantId])
+  @@map("evaluation_schemes")
+}
+
+model ProgramCapacity {
+  programId String @id @map("program_id")
+  tenantId  String @map("tenant_id")
+  version   Int    @default(1)
+  data      Json
+  @@index([tenantId])
+  @@map("program_capacities")
+}
+
+model ProgramBudget {
+  programId String @id @map("program_id")
+  tenantId  String @map("tenant_id")
+  currency  String
+  version   Int    @default(1)
+  data      Json
+  @@index([tenantId])
+  @@map("program_budgets")
+}
+
+model ProgramFeeSetting {
+  programId String   @id @map("program_id")
+  tenantId  String   @map("tenant_id")
+  rateBps   Int      @map("rate_bps")
+  version   Int      @default(1)
+  data      Json
+  updatedAt DateTime @map("updated_at")
+  @@index([tenantId])
+  @@map("program_fee_settings")
+}
+
+model SubmissionDisposition {
+  submissionId String   @id @map("submission_id")
+  tenantId     String   @map("tenant_id")
+  businessId   String   @map("business_id")
+  queueState   String   @map("queue_state")
+  version      Int      @default(1)
+  data         Json
+  updatedAt    DateTime @map("updated_at")
+  @@index([tenantId, queueState])
+  @@map("submission_dispositions")
+}
+
+model BusinessPlanDefinition {
+  key     String @id
+  version Int    @default(1)
+  data    Json
+  @@map("business_plans")
+}
+
+model BusinessTrialState {
+  businessId String @id @map("business_id")
+  tenantId   String @map("tenant_id")
+  planKey    String @map("plan_key")
+  state      String
+  version    Int    @default(1)
+  data       Json
+  @@map("business_trials")
+}
+
+model PromotionalChannel {
+  id        String   @id
+  tenantId  String?  @map("tenant_id")
+  kind      String
+  version   Int      @default(1)
+  data      Json
+  createdAt DateTime @map("created_at")
+  @@map("promotional_channels")
+}
+
+model PromotedPlacement {
+  id        String   @id
+  channelId String   @map("channel_id")
+  tenantId  String?  @map("tenant_id")
+  status    String
+  version   Int      @default(1)
+  data      Json
+  createdAt DateTime @map("created_at")
+  @@index([channelId])
+  @@map("promoted_placements")
+}
+
+model PilotChecklist {
+  businessId String   @id @map("business_id")
+  tenantId   String   @map("tenant_id")
+  version    Int      @default(1)
+  data       Json
+  updatedAt  DateTime @map("updated_at")
+  @@map("pilot_checklists")
+}
+
+// --- Shopify adapter ---
+
+model ShopifyInstallation {
+  id             String   @id
+  shop           String   @unique
+  tenantId       String   @map("tenant_id")
+  businessId     String   @map("business_id")
+  organizationId String   @map("organization_id")
+  status         String
+  version        Int      @default(1)
+  data           Json
+  installedAt    DateTime @map("installed_at")
+  updatedAt      DateTime @map("updated_at")
+  @@index([tenantId])
+  @@map("shopify_installations")
+}
+
+model ShopifyOfflineSession {
+  shop      String   @id
+  version   Int      @default(1)
+  data      Json
+  createdAt DateTime @map("created_at")
+  @@map("shopify_sessions")
+}
+
+// idempotent by (shop, topic, webhookId); status advances but never double-applies
+model WebhookEvent {
+  id         String   @id
+  shop       String
+  tenantId   String?  @map("tenant_id")
+  topic      String
+  webhookId  String   @map("webhook_id")
+  status     String
+  version    Int      @default(1)
+  data       Json
+  receivedAt DateTime @map("received_at")
+  @@unique([shop, topic, webhookId], name: "idem")
+  @@index([status])
+  @@map("webhook_events")
+}
+
+model OnboardingState {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  activated  Boolean
+  version    Int      @default(1)
+  data       Json
+  updatedAt  DateTime @map("updated_at")
+  @@index([tenantId])
+  @@map("onboarding_states")
+}
+
+model StorageConnection {
+  id         String   @id
+  tenantId   String   @map("tenant_id")
+  businessId String   @map("business_id")
+  provider   String
+  status     String
+  version    Int      @default(1)
+  data       Json
+  updatedAt  DateTime @map("updated_at")
+  @@index([tenantId])
+  @@map("storage_connections")
+}

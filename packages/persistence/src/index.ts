@@ -12,6 +12,7 @@
 export * from "./relational/store";
 export * from "./snapshot";
 export * from "./unit-of-work";
+export * from "./config";
 
 export * from "./repositories/identity";
 export * from "./repositories/offer";
