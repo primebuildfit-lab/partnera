@@ -96,3 +96,16 @@ The tenant/actor come from the session, never request input; navigation and
 controls are permission-gated; workflows POST to the services. Rendered with
 `react-dom/server` (no bundler/hydration) — accessible, progressive-enhancement.
 See [docs/24-delivery-ux.md](docs/24-delivery-ux.md).
+
+## Future expansion — Creator Marketplace (architecture-locked, not built)
+
+A documented future module ([docs/creator-marketplace/](docs/creator-marketplace/README.md))
+adds a **second economic system** — creators paid per **approved deliverable** — beside the
+affiliate system. It is designed to **reuse** this architecture, not fork it: the same kernel,
+data-driven RBAC, **append-only ledger** (new payment/fee *reasons*, **not a new ledger**),
+`PayoutRail`, fraud engine, notifications, analytics, persistence seam, application/authz
+layer, and SSR web shell. New engines are added only where the affiliate spine has no analogue
+(creator identity, opportunity/submission/review, AI-review seam, content library + rank
+unlocks, page builder). Shopify remains an **adapter**. It is **not implemented** and is
+separate from "Mega Module 5 — Live Infrastructure & Pilot". Reuse/conflict map:
+[docs/creator-marketplace/ARCHITECTURE_RECONCILIATION.md](docs/creator-marketplace/ARCHITECTURE_RECONCILIATION.md).

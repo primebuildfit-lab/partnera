@@ -91,3 +91,16 @@ Prisma-backed store (same ports/tests) on live Postgres + NestJS/Next production
 host wrapping `@partnera/web` + real auth provider + first Shopify adapter +
 telemetry → prove one real PrimeBuild conversion → payout through the UI on live
 infrastructure.
+
+## Future expansion (documented, not built): Creator Marketplace
+
+A separate, architecture-locked expansion is fully documented in
+[docs/creator-marketplace/](docs/creator-marketplace/README.md): a **second economic system**
+where creators are paid per **approved deliverable** (transparent 2%–4% platform fee),
+reusing the existing ledger (new *reasons*, not a new ledger), RBAC, `PayoutRail`, fraud,
+persistence seam, and web shell. It is **documentation only — not implemented**, is **not**
+Mega Module 5, and is **not required** for current local usability. Its own **CM0–CM16** phase
+plan, reuse map, and money/rights **counsel gates** are in that folder
+([IMPLEMENTATION_ROADMAP.md](docs/creator-marketplace/IMPLEMENTATION_ROADMAP.md),
+[ARCHITECTURE_RECONCILIATION.md](docs/creator-marketplace/ARCHITECTURE_RECONCILIATION.md)).
+Do not begin it without explicit go-ahead.

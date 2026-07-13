@@ -2,6 +2,35 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-12 — Creator Marketplace: architecture lock (docs only)
+
+Documentation-only. Architecture-locked **future expansion**; **implementation not started**;
+no code, migrations, dependencies, providers, or deployment. Existing app behaviour and tests
+are untouched.
+
+### Added
+- **`docs/creator-marketplace/`** — a 33-document architecture package for a **Creator Economy
+  & Content Marketplace**: a second economic system where creators are paid per **approved
+  deliverable** (transparent **2%–4%** platform fee) alongside the affiliate system, reusing the
+  existing tenancy/identity/**append-only ledger** (new *reasons*, not a new ledger)/`PayoutRail`/
+  fraud/notification/persistence/web spine. Covers product definition, roles, workflows + state
+  machines, deliverables, human + AI-assisted review, content library + rank unlocks + access
+  security, data model, payments/fees, monetization/entitlements, trust-safety/disputes,
+  permissions/security, API + events, page builder + storefront/Shopify adapters, analytics,
+  notifications, UX/navigation, legal-review checklist, CM0–CM16 roadmap, architecture
+  reconciliation, decisions/open-questions, self-audit + risk register. Start at
+  [docs/creator-marketplace/README.md](docs/creator-marketplace/README.md).
+
+### Decisions
+- **D-300–D-320** locked (+ provisional D-330–D-336). Notably: AI never silently releases
+  payment (D-307); one ledger, new reasons (D-315); providers move money, no card storage
+  (D-313); Shopify is an adapter (D-314); creators never pay to earn (D-312). See
+  [DECISIONS.md](DECISIONS.md) and the module log.
+
+### Not changed / not built (by design)
+- No engine, schema, or behaviour changed. Not "Mega Module 5 — Live Infrastructure & Pilot".
+  No payment provider connected; no real creator data stored.
+
 ## [0.4.2] — 2026-07-12 — Windows desktop integration
 
 Makes Partnera launch like a normal Windows app.

@@ -86,6 +86,22 @@ Documentation only. Understand the product completely.
 
 ---
 
+## Future expansion track — Creator Economy & Content Marketplace (architecture-locked)
+
+A **separate, approved future expansion**, documented and architecture-locked in
+[docs/creator-marketplace/](docs/creator-marketplace/README.md). It adds a **second economic
+system** — creators paid per **approved deliverable** — alongside the affiliate system, on the
+same tenancy/identity/ledger/fraud spine, plus a business page builder and rank-gated content
+library. Partnera earns via a transparent **2%–4%** platform fee.
+
+- **Status:** documentation only; **implementation not started**. Not part of the current
+  affiliate-core release and **not required for current local usability**.
+- **Numbering:** its own **CM0–CM16** phase track (see the module's
+  [IMPLEMENTATION_ROADMAP.md](docs/creator-marketplace/IMPLEMENTATION_ROADMAP.md)); it is **not**
+  "Mega Module 5 — Live Infrastructure & Pilot", which remains the next affiliate-core step.
+- **Sequencing:** recommended **after** Phase 1 exit (live infrastructure), reusing it; needs
+  explicit human go-ahead and counsel sign-off on money/rights before any build.
+
 ## Cross-phase always-on
 
 - Keep [DECISIONS.md](DECISIONS.md), [BUILD_STATUS.md](BUILD_STATUS.md), and [docs/21-risks.md](docs/21-risks.md) current.

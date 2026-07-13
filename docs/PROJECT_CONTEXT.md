@@ -7,7 +7,7 @@
 >
 > Maintenance rule: update this file whenever maturity, status, decisions, or "next work"
 > change. Keep it dense. Do not let it drift.
-> **Last verified:** 2026-07-12 (Windows desktop integration — icon, Desktop/Start Menu shortcuts, PWA; 17 packages, 105 tests green; launched via shortcut on Windows 11).
+> **Last verified:** 2026-07-12 (Windows desktop integration — icon, Desktop/Start Menu shortcuts, PWA; 17 packages, 105 tests green; launched via shortcut on Windows 11). Plus **Creator Marketplace architecture lock** — a docs-only, not-built future expansion ([docs/creator-marketplace/](creator-marketplace/README.md)); no code/schema/behaviour changed.
 
 ---
 
@@ -230,6 +230,7 @@ Read in this order. Stop when you have what you need.
 | 13 | **docs/21-risks.md** | Risk register + self-review. | Risk/QA reviews. |
 | 14 | **docs/20-glossary.md** | Canonical terminology (glossary wins ties). | When a term is ambiguous. |
 | — | **TESTING.md / CONTRIBUTING.md** | Test strategy; golden-rule guardrails. | Before writing tests / PRs. |
+| — | **docs/creator-marketplace/README.md** | **Architecture-locked future expansion** (Creator Economy & Content Marketplace); docs only, **not built**, **not** MM5. | Only when scoping that expansion. |
 
 ---
 
@@ -278,5 +279,14 @@ permission-gated reads. 98 green tests. **No engine interface changed.** Run: `p
 - **2026-07-12 — Mega Module 4 (Delivery & First UX) built.** Added `@partnera/web` (17 packages, 98 tests, verified green): three SSR React apps over the services, workflows, analytics, auth prep, demo world; `QueryService` added to `application`. Decisions D-215–D-218. No engine interface changed. See [24-delivery-ux.md](24-delivery-ux.md).
 - **2026-07-12 — Installation Phase.** Local install made real: durable file persistence (`.partnera/data.json`, survives restarts), cross-platform launcher (`scripts/partnera.*`), `INSTALL.md`; 102 tests green. Decisions D-219/D-220. No external services connected. See [INSTALL.md](../INSTALL.md).
 - **2026-07-12 — Windows desktop integration.** App icon + Desktop/Start Menu shortcuts + `open` command + PWA (installable standalone window); launcher hardened (ASCII, prereq checks, exit codes); Windows QA audited and launched via shortcut; 105 tests green. Decision D-221.
+
+- **2026-07-12 — Creator Marketplace architecture lock (docs only).** Authored a 33-document
+  future-expansion package ([docs/creator-marketplace/](creator-marketplace/README.md)): a
+  **second economic system** (creators paid per **approved deliverable**; transparent 2%–4%
+  platform fee) beside the affiliate system, reusing the tenancy/identity/**append-only ledger**
+  (new *reasons*, not a new ledger)/`PayoutRail`/fraud/persistence/web spine. Decisions
+  **D-300–D-320** (+ provisional D-330–D-336). **Implementation not started; no code/schema/
+  behaviour changed.** It is **not** "Mega Module 5 — Live Infrastructure & Pilot" (which
+  remains the next affiliate-core step) and is **not required** for current local usability.
 
 *(Full history: git log + DECISIONS.md. Do not duplicate it here.)*

@@ -203,6 +203,34 @@ explicit exit codes and friendly prerequisite/error handling.
 
 ---
 
+## Accepted (Creator Marketplace — architecture lock, not implemented)
+
+> A separate, **architecture-locked future expansion** documented in
+> [docs/creator-marketplace/](docs/creator-marketplace/README.md). Adds a **second economic
+> system** (creators paid per approved deliverable) alongside the affiliate system, on the
+> **same** tenancy/identity/ledger/fraud spine. **Not implemented; not part of the current
+> affiliate-core release; not the same as the roadmap's MM5 "Live Infrastructure & Pilot".**
+> Uses the **D-300 series** (leaving D-222+ for MM5) and the **CM0–CM16** phase track. Full
+> rationale per decision in [docs/creator-marketplace/DECISIONS.md](docs/creator-marketplace/DECISIONS.md).
+
+### D-300–D-320 ✅ Creator Marketplace locked decisions (summary)
+Creator Marketplace is a Partnera **module** (D-300); affiliate + creator systems **coexist**
+(D-301); one **User** can be both (D-302); businesses customize **public program pages** via a
+page builder (D-303); creators **choose** companies/opportunities (D-304); content is
+**reviewed before payment** (D-305); **human + AI-assisted review** both supported (D-306);
+**AI never silently releases payment by default** (D-307); approved content is **rank-unlocked**
+to affiliates (D-308); Partnera earns via a **transparent transaction fee, not forced
+subscriptions** (D-309); fee range **2%–4%**, configurable, snapshot-locked at terms
+acceptance (D-310); fee **business-paid by default**, creator sees a clear net (D-311);
+creators **never pay to earn** (D-312); **providers move money — Partnera stores no cards**
+(D-313, inherits D-050); **Shopify is an adapter, not the core** (D-314); creator-work money
+uses the **existing append-only ledger with new reasons — no new ledger** (D-315); a creator is
+an **actor, not a tenant** (D-316); **separation of duties** on creator payments (D-317);
+**architecture-locked but not implemented** (D-318); content storage is a **provider-independent
+seam** (D-319); content-license defaults are **conservative + explicit**, counsel-gated (D-320).
+Provisional defaults D-330–D-336 (fee 3%, review SLA, dispute window, revision allowance, age/KYC,
+license defaults, AI-auto limits) in the module log.
+
 ## Open (deferred to later modules)
 
 | ID | Open decision | Blocks | Notes |

@@ -90,7 +90,9 @@ Prettier, Vitest, GitHub Actions CI (`pnpm verify`).
   Progress, Spinner, Table, Dialog, Drawer, EmptyState).
 
 **Docs**: product 00–21 plus engineering [docs/22-engineering.md](docs/22-engineering.md),
-[TESTING.md](TESTING.md), [CONTRIBUTING.md](CONTRIBUTING.md).
+[TESTING.md](TESTING.md), [CONTRIBUTING.md](CONTRIBUTING.md). Plus an **architecture-locked
+future expansion** — [docs/creator-marketplace/](docs/creator-marketplace/README.md) (Creator
+Economy & Content Marketplace) — **documentation only, not built** (see below).
 
 ## What does NOT exist yet (intentionally)
 
@@ -121,11 +123,21 @@ first Shopify commerce adapter (D-114), and client-side enhancement/telemetry �
 proving one real PrimeBuild conversion → payout on live infrastructure through
 the UI.
 
+## Future expansion (documented, not built)
+
+**Creator Economy & Content Marketplace** — a second economic system where creators are paid
+per **approved deliverable** (transparent 2%–4% platform fee) beside the affiliate system,
+reusing the existing ledger/RBAC/payout/fraud/persistence/web spine. Fully documented and
+**architecture-locked** in [docs/creator-marketplace/](docs/creator-marketplace/README.md);
+**implementation not started**, **not** Mega Module 5, and **not required** for current local
+usability. Its own CM0–CM16 plan gates all money/rights work on counsel + explicit go-ahead.
+
 ## Change log
 
 | Date | Change |
 |---|---|
 | 2026-07-11 | Phase 0 documentation set created (design only). |
+| 2026-07-12 | Creator Marketplace architecture lock — 33-doc future-expansion package (docs only; no code). |
 | 2026-07-11 | Mega Module 2 — Platform Foundation built & verified (12 packages, 47 tests). |
 | 2026-07-12 | Mega Module 3 — Persistence & Money Spine built & verified (16 packages, 84 tests): persistence layer, Payment Engine, application/API, HTTP delivery, canonical DB model. |
 | 2026-07-12 | Mega Module 4 — Delivery & First UX built & verified (17 packages, 98 tests): `@partnera/web` — Business/Affiliate/Admin apps (SSR React over the services), workflows, analytics, auth prep, demo world. |
