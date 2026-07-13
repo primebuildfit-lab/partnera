@@ -10,6 +10,7 @@
  * application change. See docs/23-persistence.md.
  */
 export * from "./relational/store";
+export * from "./relational/sql-store";
 export * from "./snapshot";
 export * from "./unit-of-work";
 export * from "./config";

@@ -1,5 +1,6 @@
 import { type Result, err, ok, DomainError } from "@partnera/core";
 import { RelationalStore } from "./relational/store";
+import { type SqlClient, SqlStore } from "./relational/sql-store";
 import { UnitOfWork } from "./unit-of-work";
 
 /**
@@ -71,6 +72,15 @@ export const memoryDriver: StoreDriver = {
   mode: "memory",
   createStore: () => new RelationalStore(),
 };
+
+/**
+ * The Postgres (durable) driver: a write-through {@link SqlStore} over a
+ * {@link SqlClient}. Deploy passes a `pg`-backed client; tests/contract pass an
+ * in-memory client. Either way the driver code path is the same.
+ */
+export function postgresDriver(client: SqlClient): StoreDriver {
+  return { mode: "postgres", createStore: () => new SqlStore(client) };
+}
 
 /**
  * Build a `UnitOfWork` for the given config. `memory` returns the in-memory

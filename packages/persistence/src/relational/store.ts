@@ -62,6 +62,14 @@ export class Collection<Row> {
     return this.options.pk(row);
   }
 
+  /** Public accessors so a durable driver can persist rows keyed correctly. */
+  keyOf(row: Row): string {
+    return this.options.pk(row);
+  }
+  get isAppendOnly(): boolean {
+    return this.options.appendOnly === true;
+  }
+
   private uniqueViolation(row: Row, ignorePk: string | null): string | null {
     for (const idx of this.options.unique ?? []) {
       const key = idx.key(row);
@@ -228,8 +236,10 @@ export class Collection<Row> {
  * are constructed over it (see {@link import("../unit-of-work").UnitOfWork}).
  */
 export class RelationalStore {
-  private readonly collections: Collection<unknown>[] = [];
-  private inTransaction = false;
+  // `protected` so a durable driver (e.g. the SQL write-through store) can
+  // subclass and register/snapshot the same collections without duplicating logic.
+  protected readonly collections: Collection<unknown>[] = [];
+  protected inTransaction = false;
 
   define<Row>(name: string, options: CollectionOptions<Row>): Collection<Row> {
     const collection = new Collection<Row>(name, options);
