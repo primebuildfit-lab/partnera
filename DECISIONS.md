@@ -255,6 +255,22 @@ plans/trials and disclosed promotional channels exist as local config with **no 
 paid media**. Verified locally: **PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT**
 (176 tests, live + restart). External activation unchanged and not started.
 
+### D-326 ✅ Driver Postgres real = write-behind sobre una tabla JSONB KV; durabilidad por-request (single-process)
+El camino de escritura del store es **síncrono** (las `Collection` aplican unique/version/append-only
+en memoria). Un cliente Postgres real es **async**, así que el driver productivo (`PgSqlClient`,
+`packages/persistence/deploy/`) es **write-behind**: `upsert`/`remove` bufferan síncronamente y
+`flush()` persiste el buffer en Postgres dentro de una transacción, invocado por el host **en cada
+límite de request** (misma granularidad que el guardado JSON actual). El modelo de almacenamiento es
+una única tabla **`partnera_store(collection, pk, version, data JSONB)`** que mapea el puerto
+`SqlClient` 1:1 y preserva dinero (minor units string) y fechas; el esquema por-agregado
+(`prisma/schema.prisma` + `sql/0002`) queda para un pase posterior de índices/analítica. **Hallazgo
+honesto:** la durabilidad es **single-process** (unique/idempotencia se enforzan en memoria, no por
+constraints DB) — adecuada para el pilot (un proceso), a endurecer con constraints/escrituras async
+antes de multi-proceso. Los engines/servicios nunca importan `pg`. **No verificado contra Postgres
+real en esta máquina** (sin `pg`, sin DB, install scripts bloqueados): la tercera variante del
+contract (`run-contract-pg.ts`) la ejecuta Brian con una Postgres de desarrollo. Ver
+[docs/shopify-pilot/PHASE6_LIVE_ACTIVATION_REPORT.md](docs/shopify-pilot/PHASE6_LIVE_ACTIVATION_REPORT.md).
+
 ### D-325 ✅ Persistencia alojada: selección explícita de modo + agregados como filas JSONB indexadas
 El runtime tiene **59 colecciones**; el modelo Prisma canónico se extendió para cubrirlas todas
 (60 modelos). Los 31 agregados nuevos (Creator Marketplace + Shopify) se modelan como **filas JSONB

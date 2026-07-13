@@ -2,6 +2,31 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-13 — Fase 6+7: Live Activation prep + honest certification (branch)
+
+Implementa los adaptadores **reales** de activación (no plantillas) y certifica honestamente. En esta
+máquina **no hay `pg`/`@prisma/client`/Postgres/`docker`** y los install scripts están bloqueados, así
+que la activación en vivo **no se ejecutó** (recursos + autorización de Brian). Sin falsear.
+
+### Added (artefactos de deploy — fuera del build verde, usan pg/red)
+- `packages/persistence/deploy/pg-sql-client.ts` — **`PgSqlClient` real** (write-behind sobre `pg`,
+  tabla JSONB `partnera_store`, `flush` transaccional, `ping`/`close`). D-326.
+- `packages/persistence/deploy/run-contract-pg.ts` — corre la contract suite contra Postgres real (3ª variante).
+- `packages/web/deploy/real-shopify-adapters.ts` — `RealShopifyApi` (Admin API) + `RealSessionTokenVerifier` (JWT HS256).
+- `packages/web/deploy/server-prod.ts` — host productivo (env hard-fail → Postgres → hydrate → host → flush; sin fallback).
+
+### Changed (src, ruta memoria intacta)
+- `SqlClient` puerto: `flush`/`close`/`ping` opcionales; `SqlStore.flush/ping/close`.
+- `buildDemoRuntime` acepta `store` inyectable (para el host Postgres).
+- eslint ignora `**/deploy/**` (artefactos de deploy).
+
+### Docs
+- `PHASE6_LIVE_ACTIVATION_REPORT.md`, `PHASE7_FINAL_CERTIFICATION.md` (verdicto **NOT INSTALLED** +
+  tabla SÍ/NO + acción única de Brian), `POST_INSTALL_RUNBOOK.md`; D-326; BUILD_STATUS/PROJECT_CONTEXT.
+
+### Estado
+**230 tests locales verdes.** Postgres real / deploy / instalación Shopify = **pendientes de Brian**.
+
 ## [Unreleased] — 2026-07-13 — Fase 5: Shopify Activation (driver Postgres + host + OAuth/webhooks/embedded) (branch)
 
 Deja Partnera lista para que Brian solo cree la Partner app, configure credenciales, despliegue e
