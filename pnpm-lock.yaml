@@ -259,6 +259,9 @@ importers:
       '@partnera/platform':
         specifier: workspace:*
         version: link:../platform
+      '@partnera/shopify':
+        specifier: workspace:*
+        version: link:../shopify
       '@partnera/tracking-engine':
         specifier: workspace:*
         version: link:../tracking-engine
