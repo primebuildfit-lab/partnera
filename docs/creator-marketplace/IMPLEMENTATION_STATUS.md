@@ -210,6 +210,30 @@ Extended (not rebuilt) the certified module so every business controls its own p
 ### External gates (🔒 unchanged, not crossed)
 Real payments/providers, Shopify install, external AI, production DB, deploy, legal launch.
 
+---
+
+## Phase 3 — UX Simplification & Commercial Readiness ✅
+
+Turned the technically-complete module into a clear, professional, easy-to-operate product.
+**26 packages / 180 tests green; live daily-use sweep + restart verified.**
+
+### Delivered
+- Removed internal architecture jargon from user-facing pages (automated no-jargon test + live
+  scan, 0 hits); commercial nav labels; role-focused business home with a dismissible **first-run
+  checklist**; a 10-step **Setup guide** wizard; itemised **simulated-payment breakdown**
+  (creator pay / Partnera fee / business total / creator net + "no money moved"); **`ConfirmButton`**
+  no-JS confirmation before authorize/pay/publish (no accidental single click); improved empty
+  states; pilot seed now leaves an **approved payable** so the authorize step is demonstrable.
+- Files: `components.tsx` (`ConfirmButton`), `shell.tsx`, `nav.ts`, `page.ts`+`app.tsx` (cookie
+  thread + checklist routes), `pages/creator.tsx` (home, setup guide, payments, confirmations),
+  `pages/business.tsx`/`pages/admin.tsx` (wording), `demo.ts` (approved-payable seed).
+- Docs: `UX_AUDIT.md`, `UX_RELEASE_STATUS.md`; updated certification.
+
+### Verdict
+[FINAL_CERTIFICATION.md](FINAL_CERTIFICATION.md) → **PARTNERA READY FOR REAL-WORLD LOCAL PILOT**.
+Deferred (non-blocking): business content-library grid/filters, admin promo/plan consoles,
+opportunity-creation wizard/templates. External gates unchanged.
+
 ## Stop line (never crossed locally)
 Real payment providers · real money movement · real payout credentials · Shopify production /
 store install · external AI providers · public deployment · real creator personal/financial

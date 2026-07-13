@@ -255,6 +255,17 @@ plans/trials and disclosed promotional channels exist as local config with **no 
 paid media**. Verified locally: **PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT**
 (176 tests, live + restart). External activation unchanged and not started.
 
+### D-323 ✅ Creator surfaces use plain commercial language; money-moving actions require confirmation
+User-facing pages must not expose internal architecture terms (tenant, ledger, append-only,
+repository, domain event); enforced by an automated no-jargon test. Each role gets a focused
+home (not every module on every dashboard); the business creator home carries a dismissible
+**first-run checklist** and a **Setup guide** wizard. Every simulated payment shows the full
+breakdown (creator payment / Partnera fee / business total / creator net) with an explicit
+"simulated — no money moved" label, and **authorize / pay / publish-to-library sit behind a
+`<details>` confirmation** so no accidental single click can move (simulated) money or change
+distribution. Verified locally: **PARTNERA READY FOR REAL-WORLD LOCAL PILOT** (180 tests, live
+daily-use across all roles + restart). External gates unchanged and not started.
+
 ## Open (deferred to later modules)
 
 | ID | Open decision | Blocks | Notes |

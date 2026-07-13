@@ -2,6 +2,32 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-13 — Creator: UX Simplification & Commercial Readiness (branch)
+
+Made the local Creator Marketplace a clear, professional, operable product. No architecture
+rebuild; no external providers/money. `main` untouched.
+
+### Added / changed
+- **Plain language**: removed internal terms (`Tenant member`, `append-only`, `ledger`,
+  `repository`) from user-facing pages; Admin "Ledger integrity" → "Payments integrity". Enforced
+  by an automated no-jargon test.
+- **Commercial navigation** labels (business Creators group, creator nav, Settings/Company).
+- **Role-focused business home** with a dismissible/reopenable **first-run checklist** and
+  attention tiles (Awaiting review · Waiting on budget/capacity · Budget remaining · Awaiting
+  publication); "Today's work" + "Program" summary.
+- **Setup guide** wizard (`/business/creators/setup`) — 10 steps with live done status.
+- **Payment clarity**: four-line simulated-payment breakdown (creator pay / Partnera fee /
+  business total / creator net) + "no money moved"; **`ConfirmButton`** no-JS `<details>`
+  confirmation before authorize / pay / publish (no accidental single click).
+- **Empty states** with explicit next actions; pilot seed leaves an **approved** payable so the
+  authorize step is demonstrable.
+- Docs: `UX_AUDIT.md`, `UX_RELEASE_STATUS.md`; certification → **PARTNERA READY FOR REAL-WORLD
+  LOCAL PILOT**.
+
+### Tests
+- +4 web tests (no-jargon, checklist, setup guide, payment breakdown/confirm); updated 2 stale
+  assertions to new labels (not weakened). **180 total, green.** Live daily-use + restart verified.
+
 ## [Unreleased] — 2026-07-12 — Creator: Configurable Business Programs & Content Operations (branch)
 
 Extended (not rebuilt) the certified Creator Marketplace so every business controls its own

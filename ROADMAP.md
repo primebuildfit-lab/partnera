@@ -106,6 +106,10 @@ library. Partnera earns via a transparent **2%–4%** platform fee.
   capacity/budget waiting queues, independent pay/quality/reuse, two-score advisory AI). Payouts/
   AI/storage **simulated**; 176 tests green; certified **READY FOR LOCAL PILOT**. External
   activation (real money, providers, Shopify, deploy, legal) **not started** — gated.
+- **UX pass (same branch):** plain commercial language (no architecture jargon), role-focused
+  homes + first-run checklist + Setup guide, itemised simulated-payment breakdown with
+  confirmations. 180 tests green; live daily-use + restart verified; certified **PARTNERA READY
+  FOR REAL-WORLD LOCAL PILOT**. Next: real-world Brian usage + final visual/pricing decisions.
 
 ## Cross-phase always-on
 

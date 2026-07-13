@@ -131,7 +131,7 @@ created a payable; **new config entities (scheme/budget/disposition) persisted a
 - Local app installable: **✅**
 - No external provider connected: **✅**
 
-## Final decision
+## Final decision (Phase 2 — creator operations)
 
 > ## PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT
 
@@ -141,3 +141,40 @@ independent decisions; Partnera charges a separate, transparent, snapshot-locked
 AI is advisory only; all payments and AI are simulated locally. **No external payment provider,
 billing, Shopify install, external AI, production database, or deployment is connected** — those
 remain the external gates, not started, pending explicit go-ahead + counsel.
+
+---
+
+## 9. Phase 3 — UX Simplification & Commercial Readiness
+
+**Build:** 26 test-files / **180 tests** green (`pnpm verify` exit 0). Live daily-use sweep
+across all five sign-ins (business/creator/affiliate/admin/finance): every route 200, no
+crashes; **restart persistence** re-verified (approved + paid payables survive). Full audit and
+per-role verdict: [UX_AUDIT.md](UX_AUDIT.md) · [UX_RELEASE_STATUS.md](UX_RELEASE_STATUS.md).
+
+### Three UX passes
+1. **Detect** — operated the running app as every role; logged 13 findings (A1–A13).
+2. **Fix** — resolved all Critical/High (jargon leakage, single-click simulated payment,
+   unfocused home, un-itemised money) + selected Medium (nav labels, setup guide, empty states).
+3. **Certify** — re-ran the app + full gate; re-scanned for jargon (0 hits).
+
+### Local UX readiness checklist
+- Critical: **0** · High: **0**
+- All four perspectives usable: **✅** (+ delegated staff)
+- PrimeBuild workflow understandable (checklist + setup guide): **✅**
+- No architecture terminology exposed unnecessarily: **✅** (automated no-jargon test + live scan)
+- No misleading simulated payments (four-line breakdown + "no money moved" + confirm): **✅**
+- Navigation clear (commercial labels): **✅**
+- Mobile usable (responsive sidebar/`<details>` menu, scrollable wide tables): **✅**
+- Accessibility blockers cleared (skip link, landmarks, labels, keyboard-native confirm): **✅**
+- Tests/build green: **✅** · Persistence preserved: **✅**
+
+## Final decision
+
+> ## PARTNERA READY FOR REAL-WORLD LOCAL PILOT
+
+The Creator Marketplace is now a coherent, understandable local product for all roles: plain
+commercial language, role-focused homes, a guided setup, honest simulated-payment clarity with
+deliberate confirmations, and no internal architecture terms leaking to users. **No real payment
+provider, billing, external AI, Shopify install, production database, or public deployment is
+connected** — those remain the external gates, not started, pending real-world Brian usage and
+final visual/pricing decisions.

@@ -7,7 +7,7 @@
 >
 > Maintenance rule: update this file whenever maturity, status, decisions, or "next work"
 > change. Keep it dense. Do not let it drift.
-> **Last verified:** 2026-07-12 (Windows desktop integration — icon, Desktop/Start Menu shortcuts, PWA; 17 packages, 105 tests green; launched via shortcut on Windows 11). Plus **Creator Marketplace** — architecture-locked and **built locally** on branch `feat/creator-marketplace`, now with **configurable business programs & content operations** (custom categories→payments, capacity/budget waiting queues, independent pay/quality/reuse, two-score advisory AI). **18 packages, 176 tests green**; payouts/AI/storage simulated; external activation gated. Certified **READY FOR LOCAL PILOT** ([creator-marketplace/FINAL_CERTIFICATION.md](creator-marketplace/FINAL_CERTIFICATION.md)).
+> **Last verified:** 2026-07-12 (Windows desktop integration — icon, Desktop/Start Menu shortcuts, PWA; 17 packages, 105 tests green; launched via shortcut on Windows 11). Plus **Creator Marketplace** — architecture-locked and **built locally** on branch `feat/creator-marketplace`, with **configurable business programs & content operations** (custom categories→payments, capacity/budget waiting queues, independent pay/quality/reuse, two-score advisory AI) and a **UX-simplification pass** (plain commercial language, role-focused homes + first-run checklist, Setup guide, itemised simulated-payment breakdown + confirmations). **18 packages, 180 tests green**; payouts/AI/storage simulated; external activation gated. Certified **PARTNERA READY FOR REAL-WORLD LOCAL PILOT** ([creator-marketplace/FINAL_CERTIFICATION.md](creator-marketplace/FINAL_CERTIFICATION.md)).
 
 ---
 

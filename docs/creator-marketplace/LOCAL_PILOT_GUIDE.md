@@ -25,6 +25,14 @@ payouts SIMULATED). Data persists to `.partnera/data.json` and survives restart.
 | Affiliate (Brian) | `brian@primebuild.test` | Affiliate → **Content Library** |
 | Platform admin | `admin@partnera.test` | Admin Console |
 
+## Fastest path
+
+Sign in as owner → **Business → Creators**. A **first-run checklist** shows what's left to set
+up (dismissible/reopenable); **Setup guide** walks the 10 configuration steps. The tiles show
+what needs attention today (Awaiting review · Waiting on budget/capacity · Budget remaining ·
+Awaiting publication). Nav labels are commercial: **Reviews**, **Queue**, **Payments**,
+**Content Library**.
+
 ## The 15-step pilot (as owner unless noted)
 
 1. **Configure PrimeBuild's category payments** — Business → Creators → **Program Setup**.
@@ -44,9 +52,11 @@ payouts SIMULATED). Data persists to `.partnera/data.json` and survives restart.
 9. **Approve or queue** — confirm a category. If over budget/capacity it enters the **Waiting
    Queue** (honest status), never auto-rejected. A low-score category can be retained
    **internal only**.
-10. **Authorize simulated payment** — finance signs in → Creators → Creator Payments →
-    Authorize (separation of duties: the approver cannot authorize).
-11. **Execute simulated payout** — finance → Pay (sim). No real money moves.
+10. **Authorize simulated payment** — finance signs in → Creators → **Payments**. The seed
+    leaves one **approved** payable; open the **Authorize payment…** confirmation (which shows
+    creator pay / Partnera fee / business total / creator net) and confirm. Separation of duties:
+    the approver cannot authorize. No money moves.
+11. **Execute simulated payout** — finance → **Pay now…** (confirm). Simulated — no real money.
 12. **Publish content to library** — Creators → Content Library → Publish to library.
 13. **Assign affiliate ranks** — a rank-unlock rule is seeded; approved content is rank-gated.
 14. **View from the affiliate portal** — sign in as Brian → Affiliate → Content Library:
