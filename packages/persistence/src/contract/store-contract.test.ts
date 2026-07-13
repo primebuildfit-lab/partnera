@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { asId, type BusinessId } from "@partnera/core";
 import { RelationalStore } from "../relational/store";
 import { InMemorySqlClient, SqlStore } from "../relational/sql-store";
-import { UnitOfWork } from "../unit-of-work";
 import {
   createUnitOfWork,
   memoryDriver,
