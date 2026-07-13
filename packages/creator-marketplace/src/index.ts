@@ -18,4 +18,5 @@ export * from "./money";
 export * from "./rank";
 export * from "./reputation";
 export * from "./ai";
+export * from "./programs";
 export * from "./entities";

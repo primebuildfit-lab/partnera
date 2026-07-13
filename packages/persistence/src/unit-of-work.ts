@@ -33,6 +33,14 @@ import {
   type Submission,
   type SubmissionReview,
   type SubmissionVersion,
+  type BusinessPlanDefinition,
+  type BusinessTrialState,
+  type EvaluationScheme,
+  type ProgramBudget,
+  type ProgramCapacity,
+  type PromotedPlacement,
+  type PromotionalChannel,
+  type SubmissionDisposition,
 } from "@partnera/creator-marketplace";
 import { RelationalStore } from "./relational/store";
 import { AuditRepository } from "./repositories/audit";
@@ -245,6 +253,20 @@ export class UnitOfWork {
       appendOnly: true,
     });
     const creatorDisputes = store.define<Dispute>("creator_disputes", { pk: (d) => d.id });
+    // Configurable business programs (Part 14 — extend, don't duplicate money/content models).
+    const evaluationSchemes = store.define<EvaluationScheme>("evaluation_schemes", {
+      pk: (s) => s.id,
+      unique: [{ name: "program", key: (s) => s.programId }],
+    });
+    const programCapacities = store.define<ProgramCapacity>("program_capacities", { pk: (c) => c.programId });
+    const programBudgets = store.define<ProgramBudget>("program_budgets", { pk: (b) => b.programId });
+    const submissionDispositions = store.define<SubmissionDisposition>("submission_dispositions", {
+      pk: (d) => d.submissionId,
+    });
+    const businessPlans = store.define<BusinessPlanDefinition>("business_plans", { pk: (p) => p.key });
+    const businessTrials = store.define<BusinessTrialState>("business_trials", { pk: (t) => t.businessId });
+    const promotionalChannels = store.define<PromotionalChannel>("promotional_channels", { pk: (c) => c.id });
+    const promotedPlacements = store.define<PromotedPlacement>("promoted_placements", { pk: (p) => p.id });
     this.creator = new CreatorRepository(
       store,
       creatorProfiles,
@@ -263,6 +285,14 @@ export class UnitOfWork {
       creatorPayments,
       creatorLedgerEvents,
       creatorDisputes,
+      evaluationSchemes,
+      programCapacities,
+      programBudgets,
+      submissionDispositions,
+      businessPlans,
+      businessTrials,
+      promotionalChannels,
+      promotedPlacements,
     );
 
     // Seed platform-managed system roles so authorization works out of the box.

@@ -26,3 +26,7 @@ export type CreatorPaymentId = Brand<string, "CreatorPaymentId">;
 export type CreatorLedgerEventId = Brand<string, "CreatorLedgerEventId">;
 export type BusinessRatingId = Brand<string, "BusinessRatingId">;
 export type ModerationCaseId = Brand<string, "ModerationCaseId">;
+export type EvaluationSchemeId = Brand<string, "EvaluationSchemeId">;
+export type BusinessPlanId = Brand<string, "BusinessPlanId">;
+export type PromotionalChannelId = Brand<string, "PromotionalChannelId">;
+export type PlacementId = Brand<string, "PlacementId">;

@@ -21,7 +21,16 @@ import {
   type SubmissionId,
   type SubmissionReview,
   type SubmissionVersion,
+  type BusinessPlanDefinition,
+  type BusinessTrialState,
+  type EvaluationScheme,
+  type ProgramBudget,
+  type ProgramCapacity,
+  type PromotedPlacement,
+  type PromotionalChannel,
+  type SubmissionDisposition,
 } from "@partnera/creator-marketplace";
+import { type CreatorProgramId } from "@partnera/creator-marketplace";
 import { type Collection, type RelationalStore } from "../relational/store";
 
 const byCreatedAsc = <T extends { createdAt: Date }>(a: T, b: T): number =>
@@ -55,6 +64,14 @@ export class CreatorRepository {
     private readonly payments: Collection<CreatorPayment>,
     private readonly ledger: Collection<CreatorLedgerEvent>,
     private readonly disputes: Collection<Dispute>,
+    private readonly schemes: Collection<EvaluationScheme>,
+    private readonly capacities: Collection<ProgramCapacity>,
+    private readonly budgets: Collection<ProgramBudget>,
+    private readonly dispositions: Collection<SubmissionDisposition>,
+    private readonly plans: Collection<BusinessPlanDefinition>,
+    private readonly trials: Collection<BusinessTrialState>,
+    private readonly channels: Collection<PromotionalChannel>,
+    private readonly placements: Collection<PromotedPlacement>,
   ) {}
 
   // --- Creator profiles (cross-tenant actors) ---
@@ -269,6 +286,73 @@ export class CreatorRepository {
       if (!guard.ok) throw guard.error;
       this.ledger.insertIdempotent(event);
     });
+  }
+
+  // --- Evaluation schemes (business-owned categories → payment) ---
+  upsertScheme(scheme: EvaluationScheme): void {
+    this.schemes.upsert(scheme);
+  }
+  getSchemeForProgram(tenantId: TenantId, programId: CreatorProgramId): EvaluationScheme | undefined {
+    return this.schemes.find((s) => s.tenantId === tenantId && s.programId === programId)[0];
+  }
+  getScheme(tenantId: TenantId, id: string): EvaluationScheme | undefined {
+    const s = this.schemes.get(id);
+    return s && s.tenantId === tenantId ? s : undefined;
+  }
+
+  // --- Capacity & budget ---
+  upsertCapacity(capacity: ProgramCapacity): void {
+    this.capacities.upsert(capacity);
+  }
+  getCapacity(tenantId: TenantId, programId: CreatorProgramId): ProgramCapacity | undefined {
+    const c = this.capacities.get(programId);
+    return c && c.tenantId === tenantId ? c : undefined;
+  }
+  upsertBudget(budget: ProgramBudget): void {
+    this.budgets.upsert(budget);
+  }
+  getBudget(tenantId: TenantId, programId: CreatorProgramId): ProgramBudget | undefined {
+    const b = this.budgets.get(programId);
+    return b && b.tenantId === tenantId ? b : undefined;
+  }
+
+  // --- Submission disposition (independent pay/quality/reuse decisions) ---
+  upsertDisposition(d: SubmissionDisposition): void {
+    this.dispositions.upsert(d);
+  }
+  getDisposition(submissionId: SubmissionId): SubmissionDisposition | undefined {
+    return this.dispositions.get(submissionId);
+  }
+  listDispositions(tenantId: TenantId): SubmissionDisposition[] {
+    return this.dispositions.find((d) => d.tenantId === tenantId);
+  }
+
+  // --- Business plans (provisional definitions) & trials ---
+  upsertPlan(plan: BusinessPlanDefinition): void {
+    this.plans.upsert(plan);
+  }
+  listPlans(): BusinessPlanDefinition[] {
+    return this.plans.values();
+  }
+  upsertTrial(trial: BusinessTrialState): void {
+    this.trials.upsert(trial);
+  }
+  getTrial(businessId: string): BusinessTrialState | undefined {
+    return this.trials.get(businessId);
+  }
+
+  // --- Promotional channels & placements (disclosed; no paid media) ---
+  createChannel(channel: PromotionalChannel): void {
+    this.channels.insert(channel);
+  }
+  listChannels(): PromotionalChannel[] {
+    return this.channels.values();
+  }
+  createPlacement(placement: PromotedPlacement): void {
+    this.placements.insert(placement);
+  }
+  listPlacements(): PromotedPlacement[] {
+    return this.placements.values();
   }
 
   // --- Disputes ---

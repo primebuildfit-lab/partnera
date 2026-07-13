@@ -189,6 +189,49 @@ export const PAYMENT_REASONS = [
 ] as const;
 export type PaymentReason = (typeof PAYMENT_REASONS)[number];
 
+/**
+ * Queue state for a submission's business-side disposition. Distinct from the
+ * review-lifecycle `SubmissionStatus`: a submission can be `under_review` yet be
+ * `waiting_for_budget` here. Nothing is auto-rejected when a limit is hit — it
+ * enters a waiting state and the business decides.
+ */
+export const QUEUE_STATES = [
+  "submitted",
+  "under_review",
+  "waiting_for_capacity",
+  "waiting_for_budget",
+  "shortlisted",
+  "revision_requested",
+  "accepted",
+  "approved_for_payment",
+  "paid_simulated",
+  "rejected_for_payment",
+  "internal_only",
+  "affiliate_eligible",
+  "archived",
+  "irrelevant",
+] as const;
+export type QueueState = (typeof QUEUE_STATES)[number];
+
+// --- Independent content-disposition dimensions (Part 5: never collapse to approved/rejected) ---
+export const LIBRARY_STATUSES = ["none", "internal_only", "editing_required", "reusable", "published"] as const;
+export type LibraryStatus = (typeof LIBRARY_STATUSES)[number];
+
+export const AFFILIATE_ACCESS_STATUSES = ["none", "eligible", "restricted_campaign"] as const;
+export type AffiliateAccessStatus = (typeof AFFILIATE_ACCESS_STATUSES)[number];
+
+export const EDITING_STATUSES = ["none", "required", "in_progress", "done"] as const;
+export type EditingStatus = (typeof EDITING_STATUSES)[number];
+
+export const COMMERCIAL_STATUSES = ["undecided", "approved", "rejected", "restricted"] as const;
+export type CommercialStatus = (typeof COMMERCIAL_STATUSES)[number];
+
+export const LEGAL_STATUSES = ["pending", "cleared", "flagged"] as const;
+export type LegalStatus = (typeof LEGAL_STATUSES)[number];
+
+export const INTERNAL_USE_STATUSES = ["none", "internal", "training_reference"] as const;
+export type InternalUseStatus = (typeof INTERNAL_USE_STATUSES)[number];
+
 /** True when `value` is a member of `vocab`. Narrows the type on success. */
 export function isMember<T extends string>(vocab: readonly T[], value: string): value is T {
   return (vocab as readonly string[]).includes(value);

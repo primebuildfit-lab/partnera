@@ -129,6 +129,71 @@ export class DeterministicMockReviewer implements AIReviewer {
 }
 
 /**
+ * Two-score advisory evaluation (technical + commercial) plus a recommended
+ * category — the AI's advisory role. It NEVER sets the payment; the business's
+ * saved scheme maps the human-confirmed category to money. The commercial score
+ * is a deterministic mock function of clearly-labelled signals.
+ */
+export interface TwoScoreInput extends AIReviewInput {
+  /** Optional commercial signals (mock): note length, hook, etc. */
+  readonly commercial?: {
+    readonly hasHook?: boolean;
+    readonly noteLength?: number;
+    readonly brandMentioned?: boolean;
+  };
+}
+
+export interface TwoScoreResult {
+  readonly technicalScore: number; // 0-100 (objective pass rate)
+  readonly commercialScore: number; // 0-100 (deterministic mock)
+  readonly combinedScore: number;
+  readonly confidence: number;
+  readonly strengths: readonly string[];
+  readonly weaknesses: readonly string[];
+  readonly failedRequirements: readonly string[];
+  readonly modelVersion: string;
+  readonly isMock: true;
+  readonly authorizesPayment: false;
+}
+
+/** Deterministic two-score mock. Advisory only; never authorizes payment. */
+export function mockTwoScoreReview(input: TwoScoreInput, modelVersion = "mock-1.0.0"): TwoScoreResult {
+  const base = new DeterministicMockReviewer(modelVersion).review(input);
+  const technicalScore = Math.round((base.objectiveChecks.filter((c) => c.passed).length / Math.max(1, base.objectiveChecks.length)) * 100);
+  const failedRequirements = base.objectiveChecks.filter((c) => !c.passed).map((c) => c.name);
+
+  // Commercial score: deterministic mock from labelled signals.
+  const c = input.commercial ?? {};
+  let commercial = 40;
+  const strengths: string[] = [];
+  const weaknesses: string[] = [];
+  if (input.objective.hasCta) { commercial += 20; strengths.push("clear call-to-action"); } else weaknesses.push("no call-to-action");
+  if (c.hasHook) { commercial += 15; strengths.push("strong hook"); } else weaknesses.push("weak/absent hook");
+  if (c.brandMentioned) { commercial += 10; strengths.push("brand mentioned"); }
+  if ((c.noteLength ?? 0) > 20) { commercial += 5; strengths.push("detailed creator notes"); }
+  if (input.objective.hasAudio) commercial += 10; else weaknesses.push("no audio");
+  commercial = Math.max(0, Math.min(100, commercial));
+  if (technicalScore >= 80) strengths.push("meets technical requirements");
+  else weaknesses.push("technical requirements not fully met");
+
+  const combinedScore = Math.round(technicalScore * 0.5 + commercial * 0.5);
+  const confidence = base.flags.length > 0 ? 0.3 : Math.round((0.6 + (technicalScore / 100) * 0.3) * 100) / 100;
+
+  return {
+    technicalScore,
+    commercialScore: commercial,
+    combinedScore,
+    confidence,
+    strengths,
+    weaknesses,
+    failedRequirements,
+    modelVersion,
+    isMock: true,
+    authorizesPayment: false,
+  };
+}
+
+/**
  * Whether a run may drive **bounded automated** approval. Only in that mode, only
  * for objective-only deliverables, only with no risk flags, high confidence, an
  * approve recommendation, and a value under the configured ceiling (D-307/D-336).
