@@ -57,6 +57,29 @@ import {
   scoreSubmission,
   transition,
   validateFeeConfig,
+  // Configurable business programs
+  type EvaluationCategory,
+  type EvaluationScheme,
+  type EvaluationSchemeId,
+  type ProgramBudget,
+  type ProgramCapacity,
+  type SubmissionDisposition,
+  type QueueState,
+  type LibraryStatus,
+  type AffiliateAccessStatus,
+  type EditingStatus,
+  type CommercialStatus,
+  type LegalStatus,
+  type InternalUseStatus,
+  type ReviewRecommendation,
+  capacityGate,
+  categoryForScore,
+  computeExposure,
+  defaultDisposition,
+  defaultSchemeCategories,
+  mockTwoScoreReview,
+  paymentForCategory,
+  validateScheme,
 } from "@partnera/creator-marketplace";
 import { ServiceBase } from "../context";
 
@@ -715,6 +738,275 @@ export class CreatorService extends ServiceBase {
   mySubmissions(ctx: RequestContext): Submission[] {
     const creator = this.creatorSelf(ctx);
     return this.uow.creator.listSubmissionsForCreator(creator.id);
+  }
+
+  // ======================================================================
+  // Configurable business program (Parts 1-8, 11): the business owns its own
+  // categories, payments, capacity, budget, and content disposition. Partnera
+  // imposes none of these values.
+  // ======================================================================
+
+  /** The program's evaluation scheme, or the generic editable default if unset. */
+  getScheme(ctx: RequestContext, programId: CreatorProgramId): EvaluationScheme {
+    const existing = this.uow.creator.getSchemeForProgram(ctx.tenantId, programId);
+    if (existing) return existing;
+    return {
+      id: this.ids.next<EvaluationSchemeId>(),
+      tenantId: ctx.tenantId,
+      businessId: asId<BusinessId>(ctx.tenantId),
+      programId,
+      name: "Default",
+      categories: defaultSchemeCategories(),
+      updatedAt: this.clock.now(),
+    };
+  }
+
+  /** Save the business's evaluation scheme (custom categories → payments). */
+  saveScheme(ctx: RequestContext, programId: CreatorProgramId, categories: readonly EvaluationCategory[]): EvaluationScheme {
+    this.require(ctx, "creator_program.manage");
+    const existing = this.uow.creator.getSchemeForProgram(ctx.tenantId, programId);
+    const scheme: EvaluationScheme = {
+      id: existing?.id ?? this.ids.next<EvaluationSchemeId>(),
+      tenantId: ctx.tenantId,
+      businessId: asId<BusinessId>(ctx.tenantId),
+      programId,
+      name: existing?.name ?? "Program scheme",
+      categories,
+      updatedAt: this.clock.now(),
+    };
+    const valid = validateScheme(scheme);
+    if (!valid.ok) throw valid.error;
+    this.uow.creator.upsertScheme(scheme);
+    return scheme;
+  }
+
+  setCapacity(ctx: RequestContext, programId: CreatorProgramId, input: Omit<ProgramCapacity, "programId" | "tenantId">): void {
+    this.require(ctx, "creator_program.manage");
+    this.uow.creator.upsertCapacity({ programId, tenantId: ctx.tenantId, ...input });
+  }
+  getCapacity(ctx: RequestContext, programId: CreatorProgramId): ProgramCapacity | null {
+    return this.uow.creator.getCapacity(ctx.tenantId, programId) ?? null;
+  }
+
+  setBudget(ctx: RequestContext, programId: CreatorProgramId, input: { totalMinor: string; currency: string; reservedMinor?: string }): void {
+    this.require(ctx, "creator_program.manage");
+    this.uow.creator.upsertBudget({ programId, tenantId: ctx.tenantId, currency: input.currency, totalMinor: input.totalMinor, reservedMinor: input.reservedMinor ?? "0" });
+  }
+
+  /** Derived budget exposure for a program (committed/paid/remaining/projected fee). */
+  exposureFor(ctx: RequestContext, programId: CreatorProgramId) {
+    this.require(ctx, "creator_program.manage");
+    const budget = this.uow.creator.getBudget(ctx.tenantId, programId);
+    const feeBps = CREATOR_MARKETPLACE_DEFAULTS.fee.rateBps;
+    if (!budget) return null;
+    let committed = 0n;
+    let paid = 0n;
+    for (const p of this.uow.creator.listPaymentsForTenant(ctx.tenantId)) {
+      if (this.programForSubmissionId(ctx, p.submissionId) !== programId) continue;
+      const minor = BigInt(p.gross.minorUnits);
+      if (p.status === "paid") paid += minor;
+      else if (p.status === "approved" || p.status === "scheduled" || p.status === "processing") committed += minor;
+    }
+    return computeExposure(budget, committed, paid, feeBps);
+  }
+
+  /** AI advisory recommendation: two scores + the scheme category the score maps to. */
+  recommend(ctx: RequestContext, submissionId: SubmissionId): { runId: AIReviewRunId; recommendation: ReviewRecommendation } {
+    this.require(ctx, "submission.review");
+    const sub = this.getSubmissionScoped(ctx, submissionId);
+    const version = this.uow.creator.listVersions(sub.id).at(-1);
+    const deliverable = this.uow.creator.getDeliverable(sub.deliverableId);
+    const two = mockTwoScoreReview({
+      submissionVersionId: version?.id ?? submissionId,
+      objective: { widthPx: version?.widthPx, heightPx: version?.heightPx, durationSec: version?.durationSec, hasAudio: version?.hasAudio, hasCta: version?.hasCta, language: version?.language },
+      requirement: { minWidthPx: deliverable?.minWidthPx, minHeightPx: deliverable?.minHeightPx, minDurationSec: deliverable?.minDurationSec, maxDurationSec: deliverable?.maxDurationSec, requiresAudio: deliverable?.requiresAudio, requiresCta: deliverable?.requiresCta, language: deliverable?.language },
+      commercial: { hasHook: (version?.note ?? "").length > 0, noteLength: (version?.note ?? "").length, brandMentioned: true },
+    });
+    const programId = this.programForSubmissionId(ctx, submissionId);
+    const scheme = programId ? this.getScheme(ctx, programId) : null;
+    const recommendedCategoryKey = scheme ? (categoryForScore(scheme, two.combinedScore)?.key ?? null) : null;
+    const runId = this.ids.next<AIReviewRunId>();
+    const recommendation: ReviewRecommendation = {
+      technicalScore: two.technicalScore,
+      commercialScore: two.commercialScore,
+      combinedScore: two.combinedScore,
+      recommendedCategoryKey,
+      confidence: two.confidence,
+      strengths: two.strengths,
+      weaknesses: two.weaknesses,
+      failedRequirements: two.failedRequirements,
+    };
+    void this.emit(CREATOR_EVENTS.aiReviewCompleted, ctx, ctx.tenantId, { submissionId, runId, recommendedCategoryKey, isMock: true });
+    return { runId, recommendation };
+  }
+
+  /**
+   * The human review decision, driven by the business's own scheme. The reviewer
+   * confirms a **category**; the business config maps it to the **payment** (AI
+   * never sets money). Capacity/budget gates route over-limit accepted content to
+   * a **waiting** state instead of rejecting it. Payment/quality/reuse are set as
+   * **independent** disposition fields.
+   */
+  async reviewWithScheme(
+    ctx: RequestContext,
+    submissionId: SubmissionId,
+    input: { categoryKey: string; accept: boolean; reason: string; legalCleared?: boolean; overrideLibrary?: LibraryStatus; overrideAffiliate?: AffiliateAccessStatus },
+  ): Promise<{ submission: Submission; disposition: SubmissionDisposition; paymentId: CreatorPaymentId | null }> {
+    this.require(ctx, input.accept ? "submission.approve" : "submission.review");
+    const sub = this.getSubmissionScoped(ctx, submissionId);
+    const programId = this.programForSubmissionId(ctx, submissionId);
+    if (!programId) throw new NotFoundError("Program not found for submission", { submissionId });
+    const scheme = this.getScheme(ctx, programId);
+    const category = scheme.categories.find((c) => c.key === input.categoryKey);
+    if (!category) throw new ValidationError("Unknown category for this program", { categoryKey: input.categoryKey });
+
+    const pay = paymentForCategory(scheme, input.categoryKey);
+    const now = this.clock.now();
+    const businessId = sub.businessId;
+
+    // Independent disposition (Part 5): pay / quality / reuse are separate.
+    let disposition = this.uow.creator.getDisposition(submissionId) ?? defaultDisposition(submissionId, ctx.tenantId, businessId, now);
+    let paymentId: CreatorPaymentId | null = null;
+    let submissionStatusTarget: "approved" | "rejected" | "revision_requested" = input.accept && category.payable ? "approved" : "rejected";
+
+    if (input.accept && category.payable && pay.amount) {
+      // Capacity + budget gate — over-limit content WAITS, is never auto-rejected.
+      const budget = this.uow.creator.getBudget(ctx.tenantId, programId);
+      const remaining = budget ? this.budgetRemainingMinor(ctx, programId, budget) : null;
+      const capacity = this.uow.creator.getCapacity(ctx.tenantId, programId);
+      const counts = this.capacityCounts(ctx, programId);
+      const gate = capacityGate(capacity ?? null, counts, remaining ?? BigInt(Number.MAX_SAFE_INTEGER), BigInt(pay.amount.minorUnits));
+
+      if (gate.state !== "under_review") {
+        // Waiting: record the review + a honest waiting disposition; NO payable yet.
+        disposition = { ...disposition, queueState: gate.state, categoryKey: input.categoryKey, paymentEligible: true, paymentMinor: pay.amount.minorUnits, currency: pay.amount.currency, commercialStatus: "approved", legalStatus: input.legalCleared ? "cleared" : disposition.legalStatus, updatedAt: now };
+        this.uow.creator.upsertDisposition(disposition);
+        this.recordReview(ctx, sub, "approve", category.maxScore, input.reason, now);
+        void this.emit(gate.state === "waiting_for_budget" ? CREATOR_EVENTS.submissionApproved : CREATOR_EVENTS.submissionApproved, ctx, ctx.tenantId, { submissionId, waiting: gate.state });
+        return { submission: sub, disposition, paymentId: null };
+      }
+
+      // Within limits → create the payable at the business-configured amount.
+      const payment: CreatorPayment = {
+        id: this.ids.next<CreatorPaymentId>(),
+        tenantId: ctx.tenantId, businessId, creatorId: sub.creatorId, submissionId: sub.id,
+        reason: "deliverable", gross: pay.amount, status: "approved", createdAt: now, updatedAt: now,
+      };
+      this.uow.creator.createPayment(payment);
+      paymentId = payment.id;
+      disposition = {
+        ...disposition, queueState: "approved_for_payment", categoryKey: input.categoryKey,
+        paymentEligible: true, paymentMinor: pay.amount.minorUnits, currency: pay.amount.currency,
+        libraryStatus: input.overrideLibrary ?? (category.libraryEligible ? "reusable" : "none"),
+        affiliateAccess: input.overrideAffiliate ?? (category.affiliateEligible ? "eligible" : "none"),
+        commercialStatus: "approved", legalStatus: input.legalCleared ? "cleared" : disposition.legalStatus, updatedAt: now,
+      };
+    } else {
+      // Not payable (e.g. a "Rejected" category) — content may still be RETAINED.
+      submissionStatusTarget = input.accept ? "rejected" : "revision_requested";
+      disposition = {
+        ...disposition, queueState: category.libraryEligible ? "internal_only" : "rejected_for_payment",
+        categoryKey: input.categoryKey, paymentEligible: false, paymentMinor: "0", currency: category.currency,
+        libraryStatus: input.overrideLibrary ?? (category.libraryEligible ? "internal_only" : "none"),
+        affiliateAccess: input.overrideAffiliate ?? "none",
+        commercialStatus: input.accept ? "rejected" : disposition.commercialStatus,
+        internalUse: category.libraryEligible ? "internal" : "none",
+        legalStatus: input.legalCleared ? "cleared" : disposition.legalStatus, updatedAt: now,
+      };
+    }
+
+    this.uow.creator.upsertDisposition(disposition);
+    // Move the submission's review-lifecycle state (guarded).
+    if (sub.status === "under_review" || sub.status === "resubmitted") {
+      const next = transition(SUBMISSION_TRANSITIONS, "submission", sub.status, submissionStatusTarget);
+      if (next.ok) {
+        const updated: Submission = { ...sub, status: submissionStatusTarget, revisionsUsed: submissionStatusTarget === "revision_requested" ? sub.revisionsUsed + 1 : sub.revisionsUsed, updatedAt: now };
+        this.uow.creator.updateSubmission(updated);
+        this.recordReview(ctx, updated, submissionStatusTarget === "approved" ? "approve" : submissionStatusTarget === "rejected" ? "reject" : "revision", category.maxScore, input.reason, now);
+        await this.audit(ctx, "submission.review_scheme", "submission", submissionId, { categoryKey: input.categoryKey, paymentEligible: disposition.paymentEligible });
+        void this.emit(submissionStatusTarget === "approved" ? CREATOR_EVENTS.submissionApproved : CREATOR_EVENTS.submissionRejected, ctx, ctx.tenantId, { submissionId, categoryKey: input.categoryKey, paymentId });
+        return { submission: updated, disposition, paymentId };
+      }
+    }
+    return { submission: sub, disposition, paymentId };
+  }
+
+  /** Update independent disposition fields (Part 5/8) without touching money. */
+  setDisposition(
+    ctx: RequestContext,
+    submissionId: SubmissionId,
+    patch: Partial<{ queueState: QueueState; libraryStatus: LibraryStatus; affiliateAccess: AffiliateAccessStatus; editingStatus: EditingStatus; commercialStatus: CommercialStatus; legalStatus: LegalStatus; internalUse: InternalUseStatus }>,
+  ): SubmissionDisposition {
+    this.require(ctx, "submission.review");
+    const sub = this.getSubmissionScoped(ctx, submissionId);
+    const current = this.uow.creator.getDisposition(submissionId) ?? defaultDisposition(submissionId, ctx.tenantId, sub.businessId, this.clock.now());
+    const updated: SubmissionDisposition = { ...current, ...patch, updatedAt: this.clock.now() };
+    this.uow.creator.upsertDisposition(updated);
+    return updated;
+  }
+
+  /** Promote a waiting item back into active review (business decision). */
+  promoteFromQueue(ctx: RequestContext, submissionId: SubmissionId): SubmissionDisposition {
+    this.require(ctx, "submission.review");
+    return this.setDisposition(ctx, submissionId, { queueState: "under_review" });
+  }
+
+  getDisposition(ctx: RequestContext, submissionId: SubmissionId): SubmissionDisposition | null {
+    this.require(ctx, "submission.review");
+    return this.uow.creator.getDisposition(submissionId) ?? null;
+  }
+
+  /** Count accepted/active/per-opportunity/per-creator for a program's capacity gate. */
+  capacityCounts(ctx: RequestContext, programId: CreatorProgramId): { accepted: number; paid: number; active: number; perOpportunity: number; perCreator: number } {
+    let accepted = 0, paid = 0, active = 0;
+    for (const p of this.uow.creator.listPaymentsForTenant(ctx.tenantId)) {
+      if (this.programForSubmissionId(ctx, p.submissionId) !== programId) continue;
+      if (p.status === "paid") { paid += 1; accepted += 1; }
+      else if (p.status === "approved" || p.status === "scheduled" || p.status === "processing") { active += 1; accepted += 1; }
+    }
+    return { accepted, paid, active, perOpportunity: 0, perCreator: 0 };
+  }
+
+  // --- Plans / trials / promotional channels (provisional; no billing, disclosed) ---
+  listPlans() {
+    return this.uow.creator.listPlans();
+  }
+  listPromoChannels() {
+    return this.uow.creator.listChannels();
+  }
+  listPlacements() {
+    return this.uow.creator.listPlacements();
+  }
+
+  private budgetRemainingMinor(ctx: RequestContext, programId: CreatorProgramId, budget: ProgramBudget): bigint {
+    let committed = 0n;
+    let paid = 0n;
+    for (const p of this.uow.creator.listPaymentsForTenant(ctx.tenantId)) {
+      if (this.programForSubmissionId(ctx, p.submissionId) !== programId) continue;
+      const m = BigInt(p.gross.minorUnits);
+      if (p.status === "paid") paid += m;
+      else if (p.status === "approved" || p.status === "scheduled" || p.status === "processing") committed += m;
+    }
+    return BigInt(budget.totalMinor) - BigInt(budget.reservedMinor) - committed - paid;
+  }
+
+  private programForSubmissionId(ctx: RequestContext, submissionId: SubmissionId): CreatorProgramId | null {
+    const sub = this.uow.creator.getSubmission(submissionId);
+    if (!sub || sub.tenantId !== ctx.tenantId) return null;
+    const opp = this.uow.creator.getOpportunity(sub.opportunityId);
+    if (!opp) return null;
+    const camp = this.uow.creator.getCampaign(ctx.tenantId, opp.campaignId);
+    return camp?.programId ?? null;
+  }
+
+  private recordReview(ctx: RequestContext, sub: Submission, decision: "approve" | "revision" | "reject", score: number, reason: string, now: Date): void {
+    const version = this.uow.creator.listVersions(sub.id).at(-1);
+    if (!version) return;
+    this.uow.creator.addReview({
+      id: this.ids.next<ReviewId>(), tenantId: ctx.tenantId, submissionId: sub.id, versionId: version.id,
+      reviewerUserId: ctx.actorUserId, aiRunId: null, decision, weightedScore: score, mandatoryPassed: true,
+      reason, overrideOfRunId: null, createdAt: now,
+    });
   }
 
   // --- helpers ---
