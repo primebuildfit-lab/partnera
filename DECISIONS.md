@@ -255,6 +255,20 @@ plans/trials and disclosed promotional channels exist as local config with **no 
 paid media**. Verified locally: **PARTNERA CREATOR OPERATIONS READY FOR LOCAL PILOT**
 (176 tests, live + restart). External activation unchanged and not started.
 
+### D-327 ✅ Internal OS separado + dos libros financieros (Revenue/Vault) que nunca se mezclan
+El **Partnera Internal OS** es un producto separado de los portales business/creator/affiliate:
+scope `internal` propio, **layout dark propio** (no reutiliza el AppShell), y **guard deny-by-default**
+que sólo admite operadores de plataforma (`isPlatformOperator`); cualquier usuario cliente recibe
+**403** sin fuga de datos. El `PlatformService` exige operador en cada método. Las finanzas de
+plataforma usan **dos libros append-only estructuralmente separados** (`@partnera/platform-finance`):
+**Banco A — Revenue** (dinero de Partnera; withdrawable) y **Banco B — Vault** (fondos de terceros
+administrados; **no es ingreso**, no gastable). Balances **derivados** por fold; correcciones por
+eventos compensatorios; **jamás se comingling** (ids/streams/folds distintos; ningún balance suma el
+otro libro). El cierre mensual sólo aplica a Revenue. **Dinero simulado** en esta fase — custodia real
+= proveedor + revisión legal + KYC/AML + conciliación (D-050/D-106 upstream). Auth interna propia
+(Nexus será integración futura). Verificado local: 239 tests. Ver
+[docs/internal-os/README.md](docs/internal-os/README.md).
+
 ### D-326 ✅ Driver Postgres real = write-behind sobre una tabla JSONB KV; durabilidad por-request (single-process)
 El camino de escritura del store es **síncrono** (las `Collection` aplican unique/version/append-only
 en memoria). Un cliente Postgres real es **async**, así que el driver productivo (`PgSqlClient`,

@@ -2,6 +2,33 @@
 
 All notable changes to Partnera. Milestones only; full history in git + [DECISIONS.md](DECISIONS.md).
 
+## [Unreleased] — 2026-07-13 — Fase 8: Partnera Internal OS (núcleo) + doble libro financiero (branch)
+
+Panel privado de plataforma para operadores, **totalmente separado** de los portales de clientes.
+Sin reescribir dominios previos; dinero **simulado**; activación física separada y pendiente.
+
+### Added
+- **`@partnera/platform-finance`** (nuevo engine): dos libros **append-only** separados — Revenue
+  (Banco A, dinero de Partnera) y Vault (Banco B, fondos de terceros administrados) — con balances
+  derivados (`foldRevenue`/`foldVault`) y cierre mensual (`computeMonthlyClose`, solo Revenue).
+  **Nunca se mezclan.** 5 tests.
+- **Internal OS** (`@partnera/web/pages/internal.tsx`): scope `internal` con **guard deny-by-default**
+  (solo `isPlatformOperator`; clientes → 403), **layout dark propio** (sidebar por grupos, topbar,
+  acento violeta), home operativo (empresas/usuarios/órdenes/Revenue/Vault/alertas) + páginas
+  Ingresos(A)/Vault(B)/Empresas/Salud/Alertas. Resto **andamiado**.
+- **`PlatformService`** (solo operador) + **`PlatformRepository`** (revenue_events/vault_events
+  append-only + platform_alerts) en `UnitOfWork`; `identity.listBusinesses`.
+- Semilla financiera + alertas (simulada). Docs `docs/internal-os/*` (README, FINANCIAL_MODEL, VAULT,
+  PHASE8_REPORT con tabla de aceptación). D-327.
+
+### Tests
+- +14 (5 finance engine, 9 web: separación 403 × 3 perfiles, home, Revenue/Vault). **239 verdes (20 paquetes).**
+
+### No conectado / diferido
+Dinero real, custodia real, IA/almacenamiento reales, Postgres/deploy/Shopify — sin cambios. Páginas
+detalladas del OS (analítica, integraciones, IA monitor, planes editor, content workspaces,
+impersonation, command palette, ajustes) andamiadas para la iteración siguiente.
+
 ## [Unreleased] — 2026-07-13 — Fase 6+7: Live Activation prep + honest certification (branch)
 
 Implementa los adaptadores **reales** de activación (no plantillas) y certifica honestamente. En esta
