@@ -14,6 +14,9 @@ export default tseslint.config(
       // Deploy artifacts: real adapters (pg/network) activated only at deploy;
       // outside the offline build/lint/test pipeline by design.
       "**/deploy/**",
+      // Desktop wrapper: Rust crate + bundled runtime resource (server.mjs is an
+      // esbuild output). Native/packaging artifacts, not source to lint.
+      "**/src-tauri/**",
     ],
   },
   js.configs.recommended,

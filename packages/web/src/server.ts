@@ -43,6 +43,45 @@ function parseForm(body: string): Record<string, string> {
   return out;
 }
 
+/**
+ * Desktop entry (`GET /desktop`) — used only by the Tauri Internal OS wrapper.
+ * It is a thin, self-contained sign-in that pre-selects the `internal` scope so a
+ * platform operator lands directly in the Partnera Internal OS. It does NOT change
+ * the shared web login or any public portal, and it grants no privilege of its own:
+ * the `/internal` guard still enforces `isPlatformOperator` (deny-by-default), so a
+ * business/creator/affiliate identity submitted here is rejected at `/internal`.
+ */
+const DESKTOP_SESSION_COOKIE = "pt_session";
+
+function desktopLoginPage(defaultEmail: string, error: string | null): string {
+  const err = error
+    ? `<p style="margin:0 0 16px;padding:10px 12px;border-radius:8px;background:#3a1620;color:#ffb4c0;font-size:13px">${error.replace(/[<>&]/g, "")}</p>`
+    : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partnera Internal OS — Sign in</title></head>
+<body style="margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b0d12;color:#e6e8ee;min-height:100vh;display:flex;align-items:center;justify-content:center">
+<main style="width:100%;max-width:380px;padding:24px">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+    <span aria-hidden style="width:30px;height:30px;border-radius:8px;background:#6366f1;display:inline-block"></span>
+    <h1 style="margin:0;font-size:20px;font-weight:650">Partnera Internal OS</h1>
+  </div>
+  <div style="background:#141822;border:1px solid #232838;border-radius:12px;padding:20px">
+    <h2 style="margin:0 0 4px;font-size:15px">Sign in</h2>
+    <p style="margin:0 0 16px;color:#9aa2b4;font-size:12px">Platform operators only.</p>
+    ${err}
+    <form method="post" action="/login">
+      <label for="email" style="display:block;font-size:12px;color:#9aa2b4;margin-bottom:6px">Email</label>
+      <input id="email" name="email" type="email" required value="${defaultEmail.replace(/[<>&"]/g, "")}"
+        style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:8px;border:1px solid #2b3142;background:#0f131b;color:#e6e8ee;font-size:14px;margin-bottom:14px">
+      <input type="hidden" name="scope" value="internal">
+      <button type="submit" style="width:100%;padding:10px;border:0;border-radius:8px;background:#6366f1;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Continue</button>
+    </form>
+  </div>
+  <p style="color:#6b7280;font-size:11px;margin-top:14px;text-align:center">Desktop runtime · loopback only · session validated by the server</p>
+</main></body></html>`;
+}
+
 export function startServer(local: LocalWorld, port: number): void {
   const shopify = shopifyRuntimeFromEnv(process.env, port);
   const server = createServer((req, res) => {
@@ -51,6 +90,22 @@ export function startServer(local: LocalWorld, port: number): void {
       const isPost = req.method === "POST";
       const body = isPost ? await readBody(req) : "";
       const cookies = parseCookies(req.headers.cookie);
+
+      // Desktop (Tauri) entry: pre-select the Internal OS scope. Isolated here so
+      // the shared web login and public portals are untouched. Authorization is
+      // still enforced downstream by the `/internal` guard (isPlatformOperator).
+      if (url.pathname === "/desktop" && !isPost) {
+        const sid = cookies[DESKTOP_SESSION_COOKIE];
+        const existing = sid ? local.world.sessionStore.get(sid) : undefined;
+        if (existing && existing.isPlatformOperator) {
+          res.writeHead(303, { location: "/internal" });
+          res.end();
+          return;
+        }
+        res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        res.end(desktopLoginPage(local.world.users.admin, url.searchParams.get("error")));
+        return;
+      }
 
       // Shopify lifecycle routes (raw body + headers needed for HMAC).
       const shopifyRes = await dispatchShopify(
@@ -119,11 +174,14 @@ export function startServer(local: LocalWorld, port: number): void {
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-  server.listen(port, () => {
+  // Bind to loopback by default so the local host is never exposed on the LAN
+  // (the desktop runtime relies on this). Override with PARTNERA_HOST if needed.
+  const host = process.env.PARTNERA_HOST ?? "127.0.0.1";
+  server.listen(port, host, () => {
     // eslint-disable-next-line no-console
     console.log(
       [
-        `Partnera is running at http://localhost:${port}`,
+        `Partnera is running at http://${host}:${port}`,
         `  data:      ${local.dataFile}`,
         `  first run: ${local.firstRun ? "yes (demo data seeded)" : "no (loaded existing data)"}`,
         `  sign in:   owner@primebuild.test | brian@primebuild.test | admin@partnera.test`,
