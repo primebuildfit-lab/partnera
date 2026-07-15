@@ -1,0 +1,18 @@
+{
+  "name": "@partnera/internal-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Partnera Internal OS — Windows desktop wrapper (Tauri 2). Packaging only; the private admin panel (packages/web /internal) runs inside a bundled local Node runtime (resources/server.cjs).",
+  "scripts": {
+    "bundle:server": "esbuild ../../packages/web/src/server.ts --bundle --platform=node --format=cjs --jsx=automatic --outfile=src-tauri/resources/server.cjs --external:pg",
+    "prepare:node": "node ./scripts/copy-node.mjs",
+    "prepare:runtime": "pnpm bundle:server && pnpm prepare:node",
+    "desktop:dev": "pnpm prepare:runtime && tauri dev",
+    "desktop:build": "pnpm prepare:runtime && tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0",
+    "esbuild": "^0.21.5"
+  }
+}

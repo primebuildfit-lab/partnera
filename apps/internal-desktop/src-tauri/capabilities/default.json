@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capability set for the Partnera Internal OS desktop wrapper. Deny-by-default: the loaded web content (the Partnera admin panel served on loopback) uses NO Tauri IPC. External-link opening, the local runtime, and navigation control are all handled in Rust, so no filesystem, shell, http, process, or opener permission is exposed to web content. Only core window defaults are granted.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
