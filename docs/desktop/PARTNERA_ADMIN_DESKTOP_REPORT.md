@@ -115,7 +115,7 @@ NSIS `.exe` (per-user). MSI not enabled (documented how to add).
 `apps/internal-desktop/src-tauri/target/release/bundle/nsis/Partnera Internal OS_0.1.0_x64-setup.exe`
 
 ## 27. Size
-Installer ≈ **24.5 MB** (LZMA-compressed; bundles the ~88 MB Node runtime). App exe 3.3 MB.
+Installer ≈ **23.3 MB** (LZMA-compressed; bundles the ~88 MB Node runtime). App exe 3.3 MB.
 
 ## 28. Typecheck
 `typecheck:clean` → **0 errors** (after changes).
@@ -157,6 +157,11 @@ See §Commits in the build/report; local only, no push/merge.
 - Deep-link protocol prepared but not OS-registered.
 - Node runtime bundled (~88 MB) → larger install; self-contained by design.
 - Orphaned-runtime safety relies on `RunEvent::Exit` kill (no Windows Job Object yet).
+  Verified: a normal window close saves window state **and** kills the runtime child
+  cleanly; only a hard force-kill of the app can orphan the child.
+- `pnpm-lock.yaml` (adds `@tauri-apps/cli` + `esbuild` for this workspace) was left
+  **uncommitted** to avoid clobbering the concurrent agent's lockfile edits; a fresh
+  `pnpm install` regenerates it. `apps/internal-desktop/src-tauri/Cargo.lock` is committed.
 
 ## 39. Next steps
 Code signing + updater (internal channel), optional MSI target, register
