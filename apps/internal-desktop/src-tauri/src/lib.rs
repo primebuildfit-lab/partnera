@@ -13,6 +13,8 @@
 //! external links open in the system browser via a host allowlist; secrets never
 //! reach the local logs.
 
+mod updater;
+
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -60,7 +62,7 @@ fn now_millis() -> u128 {
 
 /// Append a line to the local desktop log. NEVER logs secrets/tokens/URLs with
 /// query strings — callers pass only safe, structured messages.
-fn log(app: &AppHandle, msg: &str) {
+pub(crate) fn log(app: &AppHandle, msg: &str) {
     let path = app
         .state::<Runtime>()
         .log_file
@@ -99,6 +101,19 @@ fn http_get(port: u16, path: &str) -> Option<(u16, String)> {
         .and_then(|c| c.parse::<u16>().ok())?;
     let body = buf.splitn(2, "\r\n\r\n").nth(1).unwrap_or("").to_string();
     Some((status, body))
+}
+
+/// Read the stamped build id from `resources/build-info.json` (best effort) so
+/// the boot log records exactly which build is running — the log alone answers
+/// "was an old build launched?".
+fn build_id_from(server: &PathBuf) -> String {
+    server
+        .parent()
+        .map(|d| d.join("build-info.json"))
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .and_then(|v| v.get("buildId").and_then(|b| b.as_str()).map(str::to_owned))
+        .unwrap_or_else(|| "unknown".into())
 }
 
 fn host_is_allowed(host: &str) -> bool {
@@ -163,6 +178,7 @@ fn spawn_runtime(
     // resolved against an explicit cwd is robust.
     let res_dir = server.parent().ok_or("bad server path")?;
     let script = server.file_name().ok_or("bad server path")?;
+    let build_info = res_dir.join("build-info.json");
     let mut cmd = Command::new(node);
     cmd.arg(script)
         .current_dir(res_dir)
@@ -170,6 +186,10 @@ fn spawn_runtime(
         .env("PARTNERA_HOST", "127.0.0.1")
         .env("PARTNERA_DATA", data_file)
         .env("PARTNERA_BUILD", version)
+        // Point the runtime at the stamped build descriptor so the Diagnostics
+        // view + /health report the exact version/commit/build id of THIS bundle.
+        .env("PARTNERA_BUILD_INFO", build_info)
+        .env("PARTNERA_ENV", "desktop")
         // NOTE: NODE_ENV is deliberately NOT "production" — that would mark the
         // session cookie Secure, which a browser drops over plain http loopback.
         .stdin(Stdio::null());
@@ -260,7 +280,8 @@ fn boot(app: AppHandle) {
             }
         };
         *app.state::<Runtime>().child.lock().unwrap() = Some(child);
-        log(&app, &format!("boot.spawn port={port} version={version}"));
+        let build_id = build_id_from(&server);
+        log(&app, &format!("boot.spawn port={port} version={version} build={build_id}"));
 
         // Poll readiness for up to ~30s (60 × 500ms).
         let mut ready = false;
@@ -345,6 +366,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Automatic updates (checks a signed release manifest in the background).
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Runtime::default())
         .invoke_handler(tauri::generate_handler![retry_boot, open_logs_dir])
         .setup(|app| {
@@ -386,6 +409,10 @@ pub fn run() {
                     false
                 })
                 .build()?;
+
+            // Non-blocking automatic update check; no-ops until the release
+            // channel is configured, and never gates the runtime boot below.
+            updater::spawn_startup_check(handle.clone());
 
             boot(handle);
             Ok(())

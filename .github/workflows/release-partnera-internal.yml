@@ -1,0 +1,90 @@
+# Partnera Internal OS (desktop) — build, sign and publish an auto-updatable release.
+#
+# PREPARED INFRASTRUCTURE: dormant until this repo has a GitHub remote and the
+# signing secret below is set. It builds the apps/internal-desktop Tauri app,
+# signs the updater artifacts with the private key held ONLY in repo secrets,
+# and publishes a GitHub Release with the installer, its `.sig`, and `latest.json`
+# — the manifest the installed app polls. No secret ever touches the repo/config.
+#
+# Trigger: push a tag like `partnera-internal-v0.2.1` (or run manually).
+#
+# Required repository secret (Settings → Secrets and variables → Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           full contents of ~/.partnera/updater.key
+# The password secret is NOT needed (this key has no password).
+#
+# The public key in apps/internal-desktop/src-tauri/tauri.conf.json
+# (plugins.updater.pubkey) MUST match this private key, or installed apps reject
+# every update.
+#
+# NOTE: if a separate "Partnera Operations" Tauri app is ever added, give it its
+# OWN key, workflow, tag prefix (partnera-operations-v*) and release channel —
+# never let two products consume the same manifest.
+
+name: release-partnera-internal
+
+on:
+  push:
+    tags:
+      - "partnera-internal-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag/version to release (e.g. partnera-internal-v0.2.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/internal-desktop/src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build, sign and publish desktop release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Baked into the binary so the installed app polls THIS repo's releases.
+          PARTNERA_UPDATE_OWNER: ${{ github.repository_owner }}
+          PARTNERA_UPDATE_REPO: ${{ github.event.repository.name }}
+        with:
+          projectPath: apps/internal-desktop
+          args: --config src-tauri/tauri.conf.release.json
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          releaseName: "Partnera Internal OS __VERSION__"
+          releaseBody: |
+            Partnera Internal OS desktop __VERSION__.
+
+            Instalación nueva: descarga y ejecuta el instalador `.exe`.
+            Actualización: las instalaciones existentes se actualizan solas al
+            abrir la app (se descarga, verifica la firma, instala y reinicia).
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
