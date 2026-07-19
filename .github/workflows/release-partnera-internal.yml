@@ -94,17 +94,28 @@ jobs:
           fi
 
       # Build and sign only — publishing happens below, into the separate public
-      # releases repo, which tauri-action cannot target.
+      # releases repo.
+      #
+      # This calls the Tauri CLI directly rather than using tauri-action: that
+      # action detects the package manager from a lockfile next to projectPath,
+      # finds none in this monorepo app dir, falls back to `npm run tauri` and
+      # dies on "Missing script: tauri". `pnpm exec` is also exactly the command
+      # used locally, so CI and local builds cannot drift.
+      #
+      # `beforeBuildCommand` in tauri.conf.json runs `pnpm prepare:runtime`,
+      # which bundles server.cjs, stages this runner's node.exe as the bundled
+      # runtime, and validates both before the Rust build starts.
       - name: Build and sign the desktop app
-        uses: tauri-apps/tauri-action@v0
+        shell: bash
+        working-directory: apps/internal-desktop
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.PARTNERA_INTERNAL_SIGNING_KEY }}
+          # The key has no password; the CLI still expects the variable to exist.
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
           # Baked into the binary so the installed app polls the PUBLIC channel.
           PARTNERA_UPDATE_OWNER: ${{ env.RELEASES_OWNER }}
           PARTNERA_UPDATE_REPO: ${{ env.RELEASES_NAME }}
-        with:
-          projectPath: apps/internal-desktop
-          args: --config src-tauri/tauri.conf.release.json
+        run: pnpm exec tauri build --config src-tauri/tauri.conf.release.json
 
       - name: Publish the release and repoint the rolling channel
         shell: bash
