@@ -35,13 +35,21 @@ after an explicit click. The *check* is automatic; the *install* is consented.
   because the loopback panel cannot invoke commands.
 - Single-flight guard: a check and an install can never overlap.
 
-## Release channel — REQUIRES A REMOTE (human step)
-- This repo has **no GitHub remote yet**, so `resolve_endpoint()` returns
-  `None` and the app reports "no configurado" instead of polling a dead URL.
-  The `REPLACE_OWNER` / `REPLACE_REPO` strings are **functional sentinels**
-  checked in Rust — do not "fix" them by hand.
-- CI bakes the real values in via `PARTNERA_UPDATE_OWNER` / `PARTNERA_UPDATE_REPO`.
-- `PARTNERA_UPDATE_ENDPOINT` overrides both at runtime (used for local tests).
+## Release channel — LIVE
+
+- **Code:** `primebuildfit-lab/partnera` (private).
+- **Releases:** `primebuildfit-lab/partnera-releases` (**public — required**: the
+  updater downloads unauthenticated and cannot read private release assets).
+- **Clients poll:** `partnera-internal-channel-stable` → `internal-latest.json`.
+  NOT `releases/latest/download/` — several products share that repo, so
+  "latest" is whichever product shipped most recently.
+- CI bakes owner/repo in via `PARTNERA_UPDATE_OWNER` / `PARTNERA_UPDATE_REPO`.
+  A build without them keeps the `REPLACE_*` sentinels and reports
+  "no configurado" rather than polling a dead URL — do not "fix" them by hand.
+- `PARTNERA_UPDATE_ENDPOINT` overrides at runtime (used for local tests).
+
+Verified end-to-end over HTTPS: an installed 0.2.1 updated itself to the
+published 0.2.2 straight from GitHub, relaunched, and kept its local data.
 
 ## Signing
 - Public key: `src-tauri/tauri.conf.json → plugins.updater.pubkey`.
@@ -96,12 +104,17 @@ a **verification seam only** — off unless explicitly set, and logged as
 install is the point.
 
 ## Publish a release
-1. Create/attach the GitHub remote and push the branch.
-2. Add repo secret `TAURI_SIGNING_PRIVATE_KEY` = full contents of
-   `C:\Users\carlo\.partnera\updater.key` (no password secret needed).
-3. `git tag partnera-internal-v0.2.1 && git push origin partnera-internal-v0.2.1`
-4. `release-partnera-internal.yml` builds, signs, and publishes a GitHub Release
-   with the installer, `.sig` and `latest.json`.
+Secrets are already set (`PARTNERA_INTERNAL_SIGNING_KEY`, `PARTNERA_RELEASES_TOKEN`).
+One step:
+
+1. Bump the version in **all three** of `package.json`, `src-tauri/Cargo.toml`
+   and `src-tauri/tauri.conf.json`, then commit. (CI refuses a tag that
+   disagrees with them.)
+2. `git tag partnera-internal-vX.Y.Z && git push origin partnera-internal-vX.Y.Z`
+
+`release-partnera-internal.yml` then builds, signs, publishes the immutable
+versioned release, repoints the rolling channel, and verifies the manifest is
+publicly reachable. Installed clients pick it up on their next launch.
 
 ## Tags
 `partnera-internal-vX.Y.Z` (exclusive). A different Partnera Tauri app must get

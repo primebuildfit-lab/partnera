@@ -157,21 +157,63 @@ bloqueaba `resources/node.exe` e impedía el relanzamiento. Tras usar el hook of
 
 ---
 
-## 5. Resultado final
+## 5. Publicación en GitHub — COMPLETADA Y VERIFICADA
 
-El updater oficial de Tauri está **completo y verificado**: detecta, comprueba la firma,
-descarga, muestra progreso, permite instalar, reinicia correctamente, conserva los datos
-locales y registra todos los errores.
+El canal de releases está **vivo y publicando automáticamente**.
 
-**Estado pendiente (paso humano, no técnico):** el repo Partnera **no tiene remoto de GitHub**,
-por lo que no existe canal público de releases. Hasta entonces la app reporta honestamente
-"Actualizaciones no configuradas" en vez de sondear una URL muerta. Para activarlo:
+- **Código:** `primebuildfit-lab/partnera` (PRIVADO), rama `feat/partnera-admin-tauri`.
+- **Canal público:** `primebuildfit-lab/partnera-releases` — obligatorio: el updater descarga
+  **sin autenticar** y no puede leer assets de un repo privado.
+- **Release publicada:** `partnera-internal-v0.2.2` (instalador + `.sig`).
+- **Tag rodante:** `partnera-internal-channel-stable` → `internal-latest.json`.
+- **Secretos:** `PARTNERA_INTERNAL_SIGNING_KEY` (clave propia 8ADBA54F) y
+  `PARTNERA_RELEASES_TOKEN` (PAT cross-repo).
 
-1. Crear/adjuntar el remoto y hacer push.
-2. Añadir el secreto `TAURI_SIGNING_PRIVATE_KEY` con el contenido de `~/.partnera/updater.key`.
-3. `git tag partnera-internal-v0.2.1 && git push origin partnera-internal-v0.2.1`.
+Publicar una versión nueva es ahora un solo paso:
 
-El workflow ya está listo y ahora **sí puede funcionar** (antes fallaba por P1).
+```bash
+# bump a X.Y.Z en package.json + Cargo.toml + tauri.conf.json, commit
+git tag partnera-internal-vX.Y.Z && git push origin partnera-internal-vX.Y.Z
+```
+
+El workflow compila, firma, publica la release inmutable, reapunta el canal y **verifica que
+el manifiesto queda accesible**. Ejecución verde: run `29668057674`.
+
+### Prueba REAL contra GitHub por HTTPS
+
+Instalado 0.2.1 (con el endpoint compilado dentro), sin ningún override local:
+
+```
+updater.available version=0.2.2 current=0.2.1     ← leído de GitHub por HTTPS
+updater.download_start version=0.2.2
+updater.download_done verifying_signature          ← 25 MB descargados de GitHub
+updater.stopping_runtime_before_install
+app.start                                          ← relanzada sola
+updater.up_to_date version=0.2.2                   ← la nueva versión se comprueba y se ve al día
+boot.spawn ... version=0.2.2 build=0.2.2+e1c779533.20260719T010811Z
+```
+
+El build id `0.2.2+e1c779533` **sin sufijo `.dirty`** demuestra que el binario instalado es el
+artefacto compilado por CI del commit `e1c7795` y descargado de GitHub — no una compilación
+local. Datos locales intactos (`data.json` sha256 idéntico, marcador sobrevivió), sin procesos
+huérfanos.
+
+### Problemas de CI encontrados y corregidos
+
+| # | Problema | Corrección |
+|---|---|---|
+| C1 | `pnpm install --frozen-lockfile` fallaba: el lockfile de HEAD fija `pg`/`@types/pg` pero `packages/web/package.json` nunca se comiteó con ellos | Declaradas esas dos dependencias (commit aparte, fuera de esta app — ver §6) |
+| C2 | `tauri-action` no detecta pnpm sin lockfile junto a `projectPath`, caía a npm y moría con `Missing script: tauri` | Llamada directa `pnpm exec tauri build`, el mismo comando usado en local |
+| C3 | esbuild no resolvía `@partnera/*`: sus `dist/` son salidas de tsc y no están en git | Paso `pnpm build` antes de empaquetar |
+
+C1 y C3 **solo aparecen en un checkout limpio**: en local funcionaban por artefactos residuales.
+
+## 5b. Resultado final
+
+El updater oficial de Tauri está **completo, publicado y verificado de extremo a extremo**:
+detecta, comprueba la firma, descarga, muestra progreso, permite instalar, reinicia
+correctamente, conserva los datos locales y registra todos los errores — tanto contra un canal
+local como **contra la release real de GitHub por HTTPS**.
 
 ⚠️ **Riesgo a gestionar:** si se pierde `~/.partnera/updater.key`, ninguna instalación
 existente podrá volver a actualizarse jamás. Conviene una copia offline.
@@ -201,8 +243,7 @@ Detectados de paso; **no se tocó ninguna otra aplicación**.
 
 ## 7. Posibles mejoras
 
-1. **Publicar la primera release real** y repetir la prueba contra GitHub sobre HTTPS —
-   es lo único que este trabajo no pudo cubrir.
+1. ~~Publicar la primera release real y probar contra GitHub por HTTPS~~ — **HECHO**, ver §5.
 2. **Canales estable/beta**: `latest.json` + `beta.json` con selección en la UI.
 3. **Recordatorio diferido**: "Más tarde" hoy solo cierra; podría reofrecer a las N horas.
 4. **Reanudar descargas** interrumpidas (hoy se reinicia desde cero).
