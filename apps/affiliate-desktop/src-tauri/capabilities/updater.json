@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "updater",
+  "description": "Capability for the small LOCAL updater window (ui/updater.html) only. It needs core defaults so it can listen to `updater://state` and invoke this app's own updater commands. The updater plugin itself is driven entirely from Rust, so no `updater:*` permission is granted to web content — the page can never trigger a download or install path that Rust did not authorise. This capability is deliberately NOT granted to the `main` window, which loads remote content.",
+  "windows": ["updater"],
+  "permissions": ["core:default"]
+}

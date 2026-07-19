@@ -1,0 +1,15 @@
+{
+  "name": "@partnera/affiliate-desktop",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "Partnera Affiliate — Windows desktop thin client (Tauri 2). Loads the affiliate portal (/affiliate) from the central Partnera API over HTTPS. No bundled runtime and no local database: the central API (packages/web on Railway → shared Postgres) is the single source of truth. Affiliates only.",
+  "scripts": {
+    "prepare:build-info": "node ./scripts/gen-build-info.mjs",
+    "desktop:dev": "pnpm prepare:build-info && tauri dev",
+    "desktop:build": "pnpm prepare:build-info && tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0"
+  }
+}

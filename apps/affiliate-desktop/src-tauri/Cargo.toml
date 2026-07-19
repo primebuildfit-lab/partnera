@@ -1,0 +1,31 @@
+[package]
+name = "partnera-affiliate-desktop"
+version = "0.1.1"
+description = "Partnera Affiliate — Windows desktop thin client"
+authors = ["Partnera"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "partnera_affiliate_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-window-state = "2"
+tauri-plugin-opener = "2"
+# Automatic updates: checks a signed manifest, downloads and installs the new
+# signed shell package natively. Driven from Rust (see src/updater.rs).
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

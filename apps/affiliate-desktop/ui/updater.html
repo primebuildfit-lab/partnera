@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Actualizaciones — Partnera Affiliate</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1016;
+        --panel: #171826;
+        --border: #2a2c42;
+        --text: #e8e9f0;
+        --muted: #9a9cb8;
+        --accent: #7c5cff;
+        --ok: #6ee7a8;
+        --danger: #ffb4c0;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        background: var(--bg); color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        display: flex; flex-direction: column;
+        -webkit-user-select: none; user-select: none;
+        padding: 22px;
+      }
+      .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+      .mark { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, var(--accent), #38bdf8); }
+      h1 { margin: 0; font-size: 14px; font-weight: 650; }
+      .body { flex: 1; }
+      .headline { font-size: 15px; font-weight: 600; margin: 0 0 8px; line-height: 1.4; }
+      .headline.ok { color: var(--ok); }
+      .headline.bad { color: var(--danger); }
+      .detail { color: var(--muted); font-size: 12px; margin: 0; line-height: 1.5; }
+      .notes {
+        margin-top: 12px; max-height: 84px; overflow-y: auto; white-space: pre-wrap;
+        background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+        padding: 10px; font-size: 11px; color: var(--muted); line-height: 1.5;
+        -webkit-user-select: text; user-select: text;
+      }
+      .bar {
+        margin-top: 14px; height: 6px; border-radius: 999px;
+        background: var(--panel); border: 1px solid var(--border); overflow: hidden;
+      }
+      .bar > span {
+        display: block; height: 100%; width: 0%;
+        background: linear-gradient(90deg, var(--accent), #38bdf8);
+        transition: width 0.15s linear;
+      }
+      .bar.indeterminate > span { width: 35%; animation: slide 1.1s ease-in-out infinite; }
+      @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+      .bytes { margin-top: 6px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .btns { display: flex; gap: 10px; margin-top: 18px; }
+      button {
+        flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+        background: #1b2130; color: var(--text); font-size: 13px; cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+      button:hover:not(:disabled) { filter: brightness(1.12); }
+      button:disabled { opacity: 0.45; cursor: default; }
+      button[hidden] { display: none; }
+      .foot { color: #5b6270; font-size: 10px; margin-top: 14px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div class="brand"><span class="mark"></span><h1>Partnera Affiliate · Actualizaciones</h1></div>
+
+    <div class="body">
+      <p class="headline" id="headline">Buscando actualizaciones…</p>
+      <p class="detail" id="detail"></p>
+      <div class="notes" id="notes" hidden></div>
+      <div class="bar" id="bar" hidden><span id="fill"></span></div>
+      <div class="bytes" id="bytes" hidden></div>
+    </div>
+
+    <div class="btns">
+      <button class="primary" id="primary" hidden></button>
+      <button id="secondary">Cerrar</button>
+    </div>
+    <div class="foot">Actualizaciones firmadas · verificación minisign</div>
+
+    <script>
+      const el = (id) => document.getElementById(id);
+      const fmt = (n) => {
+        if (typeof n !== "number" || !isFinite(n)) return "";
+        const mb = n / (1024 * 1024);
+        return mb >= 1 ? mb.toFixed(1) + " MB" : Math.round(n / 1024) + " KB";
+      };
+
+      let invoke = null;
+
+      function render(s) {
+        s = s || {};
+        const headline = el("headline");
+        const detail = el("detail");
+        const primary = el("primary");
+        const secondary = el("secondary");
+        const bar = el("bar");
+        const notes = el("notes");
+        const bytes = el("bytes");
+
+        headline.className = "headline";
+        primary.hidden = true;
+        primary.disabled = false;
+        bar.hidden = true;
+        bar.classList.remove("indeterminate");
+        bytes.hidden = true;
+        notes.hidden = !s.notes;
+        if (s.notes) notes.textContent = s.notes;
+        detail.textContent = "";
+        secondary.textContent = "Cerrar";
+
+        switch (s.phase) {
+          case "checking":
+            headline.textContent = "Buscando actualizaciones…";
+            bar.hidden = false;
+            bar.classList.add("indeterminate");
+            break;
+
+          case "up-to-date":
+            headline.textContent = "La aplicación ya está actualizada.";
+            headline.classList.add("ok");
+            detail.textContent = s.version ? "Versión instalada " + s.version + "." : "";
+            primary.hidden = false;
+            primary.textContent = "Buscar de nuevo";
+            primary.dataset.action = "check";
+            break;
+
+          case "available":
+            headline.textContent = "Nueva versión " + (s.version || "") + " disponible.";
+            detail.textContent = "Preparando la descarga…";
+            bar.hidden = false;
+            bar.classList.add("indeterminate");
+            break;
+
+          case "downloading": {
+            headline.textContent = "Descargando la versión " + (s.version || "") + "…";
+            bar.hidden = false;
+            const pct = typeof s.percent === "number" ? s.percent : -1;
+            if (pct >= 0) {
+              el("fill").style.width = pct + "%";
+              detail.textContent = pct + "%";
+            } else {
+              bar.classList.add("indeterminate");
+              detail.textContent = "Descargando…";
+            }
+            if (typeof s.downloaded === "number") {
+              bytes.hidden = false;
+              bytes.textContent = fmt(s.downloaded) + (s.total ? " de " + fmt(s.total) : "");
+            }
+            break;
+          }
+
+          case "ready":
+            headline.textContent = "Versión " + (s.version || "") + " lista para instalarse.";
+            headline.classList.add("ok");
+            detail.textContent =
+              "Firma verificada. La aplicación se cerrará, se instalará la actualización y se reiniciará. Tus datos locales se conservan.";
+            primary.hidden = false;
+            primary.textContent = "Reiniciar e instalar";
+            primary.dataset.action = "install";
+            secondary.textContent = "Más tarde";
+            break;
+
+          case "installing":
+            headline.textContent = "Instalando y reiniciando…";
+            detail.textContent = "No cierres la aplicación.";
+            bar.hidden = false;
+            bar.classList.add("indeterminate");
+            break;
+
+          case "disabled":
+            headline.textContent = "Actualizaciones no configuradas.";
+            detail.textContent =
+              s.message || "Esta instalación todavía no tiene un canal de publicación asignado.";
+            break;
+
+          case "error":
+            headline.textContent = "No se pudo actualizar.";
+            headline.classList.add("bad");
+            detail.textContent =
+              (s.message || "Error desconocido.") + (s.error ? " (" + s.error + ")" : "");
+            primary.hidden = false;
+            primary.textContent = "Reintentar";
+            primary.dataset.action = "check";
+            break;
+
+          default:
+            headline.textContent = "Actualizaciones";
+            detail.textContent = s.message || "";
+            primary.hidden = false;
+            primary.textContent = "Buscar actualizaciones";
+            primary.dataset.action = "check";
+        }
+      }
+
+      async function wire() {
+        const tauri = window.__TAURI__;
+        if (!tauri || !tauri.event || !tauri.core) return;
+        invoke = tauri.core.invoke;
+
+        await tauri.event.listen("updater://state", (e) => render(e.payload));
+
+        el("primary").addEventListener("click", (ev) => {
+          const action = ev.currentTarget.dataset.action;
+          ev.currentTarget.disabled = true;
+          if (action === "install") invoke("updater_install").catch(() => {});
+          else invoke("updater_check").catch(() => {});
+        });
+        el("secondary").addEventListener("click", () => {
+          invoke("updater_dismiss").catch(() => {});
+        });
+
+        // Catch up with whatever the flow already reported before we opened.
+        try {
+          render(await invoke("updater_state"));
+        } catch {
+          /* keep the default view */
+        }
+      }
+      wire();
+    </script>
+  </body>
+</html>

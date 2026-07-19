@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Partnera Affiliate</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1016;
+        --panel: #171826;
+        --border: #2a2c42;
+        --text: #e8e9f0;
+        --muted: #9a9cb8;
+        --accent: #7c5cff;
+        --danger: #ffb4c0;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        background: var(--bg); color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        display: flex; align-items: center; justify-content: center;
+        -webkit-user-select: none; user-select: none;
+      }
+      main { width: 100%; max-width: 420px; padding: 32px; text-align: center; }
+      .brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; }
+      .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), #38bdf8); }
+      h1 { margin: 0; font-size: 20px; font-weight: 650; }
+      .tag { font-size: 11px; color: var(--accent); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; }
+      .spinner {
+        width: 34px; height: 34px; margin: 0 auto 18px;
+        border: 3px solid var(--border); border-top-color: var(--accent);
+        border-radius: 50%; animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      #status { color: var(--muted); font-size: 14px; min-height: 20px; }
+      #error { display: none; text-align: left; }
+      #error.show { display: block; }
+      .err-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+      .err-title { font-size: 15px; font-weight: 650; margin: 0 0 8px; color: var(--danger); }
+      .err-msg { color: var(--muted); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+      .btns { display: flex; gap: 10px; }
+      button { flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: #1b2130; color: var(--text); font-size: 13px; cursor: pointer; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+      button:hover { filter: brightness(1.1); }
+      .foot { color: #5b6270; font-size: 11px; margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="loading">
+        <div class="brand"><span class="mark"></span><h1>Partnera Affiliate</h1><span class="tag">afiliados</span></div>
+        <div class="spinner"></div>
+        <div id="status">Conectando a Partnera Affiliate…</div>
+      </div>
+
+      <div id="error">
+        <div class="brand"><span class="mark"></span><h1>Partnera Affiliate</h1></div>
+        <div class="err-card">
+          <p class="err-title" id="err-title">No se pudo conectar</p>
+          <p class="err-msg" id="err-msg"></p>
+          <div class="btns">
+            <button class="primary" id="retry">Reintentar</button>
+            <button id="open-logs">Ver logs</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">Cliente ligero · API central Partnera · solo afiliados</div>
+    </main>
+
+    <script>
+      function setStatus(text) { const s = document.getElementById("status"); if (s) s.textContent = text; }
+      function showError(title, message) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("error").classList.add("show");
+        document.getElementById("err-title").textContent = title || "No se pudo conectar";
+        document.getElementById("err-msg").textContent = message || "Ocurrió un error inesperado.";
+      }
+      async function wire() {
+        const tauri = window.__TAURI__;
+        if (!tauri || !tauri.event || !tauri.core) return;
+        const { listen } = tauri.event;
+        const { invoke } = tauri.core;
+        await listen("boot://status", (e) => { const p = e.payload || {}; if (p.status) setStatus(p.status); });
+        await listen("boot://error", (e) => { const p = e.payload || {}; showError(p.title, p.message); });
+        document.getElementById("retry").addEventListener("click", () => {
+          document.getElementById("error").classList.remove("show");
+          document.getElementById("loading").style.display = "block";
+          invoke("retry_boot").catch(() => {});
+        });
+        document.getElementById("open-logs").addEventListener("click", () => { invoke("open_logs_dir").catch(() => {}); });
+      }
+      wire();
+    </script>
+  </body>
+</html>
