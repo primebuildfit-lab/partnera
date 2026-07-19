@@ -1,6 +1,6 @@
 [package]
 name = "partnera-affiliate-desktop"
-version = "0.1.1"
+version = "0.1.2"
 description = "Partnera Affiliate — Windows desktop thin client"
 authors = ["Partnera"]
 edition = "2021"

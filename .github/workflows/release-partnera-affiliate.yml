@@ -8,9 +8,13 @@
 #
 # Trigger: push a tag like `partnera-affiliate-v0.1.1` (or run manually).
 #
-# Required repository secret (Settings → Secrets and variables → Actions):
+# Required repository secrets (Settings → Secrets and variables → Actions):
 #   PARTNERA_AFFILIATE_SIGNING_KEY   full contents of .secrets-tauri/affiliate-updater.key
-# The password secret is NOT needed (this key has no password).
+#                                    (no password secret needed — this key has none)
+#   PARTNERA_RELEASES_TOKEN          PAT with `repo` scope on RELEASES_REPO below.
+#                                    The built-in GITHUB_TOKEN is scoped to THIS
+#                                    repository only and cannot publish into the
+#                                    separate public releases repo.
 #
 # KEY ISOLATION: this app has its OWN keypair (minisign 9365EE8087376568). Do not
 # reuse another Partnera app's key here, and do not reuse this one elsewhere — a
@@ -43,6 +47,13 @@ permissions:
 
 env:
   CHANNEL_TAG: partnera-affiliate-channel-stable
+  # The PUBLIC releases repository. This source repo is private, and GitHub only
+  # serves a private repo's release assets to authenticated callers — the updater
+  # downloads with no credentials, so the channel must live in a public repo.
+  # It holds signed installers and manifests only; no source code.
+  RELEASES_REPO: primebuildfit-lab/partnera-releases
+  RELEASES_OWNER: primebuildfit-lab
+  RELEASES_NAME: partnera-releases
 
 jobs:
   build:
@@ -88,66 +99,81 @@ jobs:
             exit 1
           fi
 
-      - name: Build, sign and publish desktop release
+      # Build and sign only — publishing happens below, into the separate public
+      # releases repo, which tauri-action cannot target.
+      - name: Build and sign the desktop app
         uses: tauri-apps/tauri-action@v0
-        id: tauri
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.PARTNERA_AFFILIATE_SIGNING_KEY }}
-          # Baked into the binary so the installed app polls THIS repo's channel.
-          PARTNERA_UPDATE_OWNER: ${{ github.repository_owner }}
-          PARTNERA_UPDATE_REPO: ${{ github.event.repository.name }}
+          # Baked into the binary so the installed app polls the PUBLIC channel.
+          PARTNERA_UPDATE_OWNER: ${{ env.RELEASES_OWNER }}
+          PARTNERA_UPDATE_REPO: ${{ env.RELEASES_NAME }}
         with:
           projectPath: apps/affiliate-desktop
           args: --config src-tauri/tauri.conf.release.json
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-          releaseName: "Partnera Affiliate __VERSION__"
-          releaseBody: |
-            Partnera Affiliate desktop __VERSION__.
 
-            Instalación nueva: descarga y ejecuta el instalador `.exe`.
-            Actualización: las instalaciones existentes se actualizan solas al
-            abrir la app (se descarga, se verifica la firma, se instala y se
-            reinicia). También se puede comprobar manualmente desde
-            **Ayuda → Buscar actualizaciones…**.
-          releaseDraft: false
-          prerelease: false
-          includeUpdaterJson: true
-
-      - name: Repoint the rolling update channel
+      - name: Publish the release and repoint the rolling channel
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PARTNERA_RELEASES_TOKEN }}
         run: |
           set -euo pipefail
           TAG="${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}"
+          VERSION="${TAG#partnera-affiliate-v}"
+          BUNDLE="apps/affiliate-desktop/src-tauri/target/release/bundle/nsis"
 
-          # tauri-action attaches the manifest as `latest.json` on the version
-          # release; the affiliate channel serves it as `affiliate-latest.json`
-          # so sibling products can never collide with it.
-          gh release download "$TAG" --pattern 'latest.json' --output affiliate-latest.json --clobber
+          EXE=$(ls "$BUNDLE"/*_x64-setup.exe)
+          SIG=$(ls "$BUNDLE"/*_x64-setup.exe.sig)
+          ASSET=$(basename "$EXE" | tr ' ' '-')
+          cp "$EXE" "$ASSET"
+          export VERSION SIG TAG ASSET
 
-          # Sanity: the manifest must carry a signature for the Windows target.
+          # The versioned release holds the immutable installer.
+          gh release create "$TAG" "$ASSET" "$SIG" \
+            --repo "$RELEASES_REPO" \
+            --title "Partnera Affiliate $VERSION" \
+            --notes "Partnera Affiliate desktop $VERSION.
+
+          Instalación nueva: descarga y ejecuta el instalador \`.exe\`.
+          Actualización: las instalaciones existentes se actualizan solas al abrir
+          la app (se descarga, se verifica la firma, se instala y se reinicia).
+          También se puede comprobar desde **Ayuda → Buscar actualizaciones…**."
+
+          # The manifest points at that immutable asset.
           node -e "
-            const m = require('./affiliate-latest.json');
-            const p = (m.platforms || {})['windows-x86_64'];
-            if (!p || !p.signature || !p.url) { console.error('manifest missing signed windows-x86_64 entry'); process.exit(1); }
-            console.log('manifest ok: version', m.version);
+            const fs = require('fs');
+            const m = {
+              version: process.env.VERSION,
+              notes: 'Partnera Affiliate ' + process.env.VERSION,
+              pub_date: new Date().toISOString(),
+              platforms: {
+                'windows-x86_64': {
+                  signature: fs.readFileSync(process.env.SIG, 'utf8').trim(),
+                  url: 'https://github.com/' + process.env.RELEASES_REPO +
+                       '/releases/download/' + process.env.TAG + '/' + process.env.ASSET,
+                },
+              },
+            };
+            if (!m.platforms['windows-x86_64'].signature) throw new Error('empty signature');
+            fs.writeFileSync('affiliate-latest.json', JSON.stringify(m, null, 2));
+            console.log('manifest ->', m.version);
           "
 
-          if ! gh release view "$CHANNEL_TAG" >/dev/null 2>&1; then
+          # The rolling channel tag is what installed clients poll.
+          if ! gh release view "$CHANNEL_TAG" --repo "$RELEASES_REPO" >/dev/null 2>&1; then
             gh release create "$CHANNEL_TAG" \
+              --repo "$RELEASES_REPO" \
               --title "Partnera Affiliate — canal estable" \
-              --notes "Manifiesto de actualización que consultan las instalaciones de Partnera Affiliate. Se actualiza en cada release; no contiene instaladores." \
+              --notes "Manifiesto que consultan las instalaciones de Partnera Affiliate. Se reapunta en cada release; no contiene instaladores." \
               --latest=false
           fi
-          gh release upload "$CHANNEL_TAG" affiliate-latest.json --clobber
+          gh release upload "$CHANNEL_TAG" affiliate-latest.json --clobber --repo "$RELEASES_REPO"
 
       - name: Verify the published manifest is reachable
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://github.com/${{ github.repository }}/releases/download/${CHANNEL_TAG}/affiliate-latest.json"
+          URL="https://github.com/${RELEASES_REPO}/releases/download/${CHANNEL_TAG}/affiliate-latest.json"
           echo "polling $URL"
           curl -fsSL --retry 5 --retry-delay 5 "$URL" | node -e "
             let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{

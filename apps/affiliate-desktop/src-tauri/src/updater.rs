@@ -86,6 +86,13 @@ pub struct UpdaterState {
 /// `PARTNERA_UPDATE_ENDPOINT` override wins, and is what the documented local
 /// end-to-end test uses.
 ///
+/// These point at the **public releases repository**
+/// (`primebuildfit-lab/partnera-releases`), not at the private source repo.
+/// GitHub serves release assets of a private repo only to authenticated
+/// callers, and the updater downloads with no credentials — so the channel has
+/// to live somewhere public. That repo holds only signed installers and
+/// manifests; no source code.
+///
 /// The manifest is pinned to the fixed rolling tag `partnera-affiliate-channel-stable`
 /// rather than `releases/latest/download/`. Several Partnera products ship out of
 /// the same repository, so "the latest release" is whichever product published
