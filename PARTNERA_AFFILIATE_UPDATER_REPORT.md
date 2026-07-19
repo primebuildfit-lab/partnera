@@ -259,19 +259,52 @@ chequeo observado en una pasada intermedia se reprodujo como un **segundo proces
 residual** de la prueba anterior, no como un reintento: la app no tiene guardia de
 instancia única (ver §7).
 
-### 5.7 Qué NO se probó
+### 5.7 Actualización real contra el canal de GitHub (HTTPS, producción)
+
+Publicado el canal real, se repitió la prueba **sin servidor local**:
+
+- Repo de código: `primebuildfit-lab/partnera` (**privado**).
+- Repo de canal: `primebuildfit-lab/partnera-releases` (**público**, sin código).
+- Release `partnera-affiliate-v0.1.2` + tag rodante `partnera-affiliate-channel-stable`.
+- Manifiesto e instalador comprobados alcanzables **sin credenciales** (HTTP 200).
+
+Log real de la app instalada 0.1.1:
+
+```
+{"msg":"updater.available version=0.1.2"}
+{"msg":"updater.verified version=0.1.2 bytes=1826138"}
+{"msg":"updater.installing version=0.1.2"}
+{"msg":"app.start"}              ← relanzada por el instalador
+{"msg":"updater.up_to_date"}
+```
+
+`DisplayVersion` y `FileVersion`: `0.1.1` → **`0.1.2`**. El archivo
+`prueba-canal-real.txt` sobrevivió íntegro.
+
+**Ruta de producción pura:** relanzada la 0.1.2 **sin ninguna variable de
+entorno**, consulta el canal con el endpoint horneado en el binario
+(`PARTNERA_UPDATE_OWNER/REPO`) y reporta `updater.up_to_date`. ✅ Esto elimina
+las reservas de HTTPS y "canal real" que figuraban aquí.
+
+> **Por qué el canal es público aunque el código sea privado:** GitHub sirve los
+> assets de un release de un repo privado solo a llamadas autenticadas, y el
+> updater descarga sin credenciales. Con todo privado las actualizaciones no
+> bajarían. El repo público contiene únicamente instaladores firmados y
+> manifiestos.
+
+### 5.8 Qué NO se probó
 
 - **Clic humano en "Reiniciar e instalar" y en Ayuda → Buscar actualizaciones…**: el
   manejador de menú y los comandos están cableados y la ventana se abre y renderiza
   (§5.5), pero la instalación se ejercitó por la vía `PARTNERA_UPDATE_AUTOINSTALL`,
   que llama exactamente al mismo comando `updater_install`. La ruta del clic en sí no
   se simuló.
-- **El canal real de GitHub**: no existe repo remoto, así que el workflow no ha
-  llegado a ejecutarse nunca. Las pruebas usaron un canal local por HTTP.
-- **HTTPS**: los binarios de prueba se compilaron con un overlay local que habilita
-  `dangerousInsecureTransportProtocol` para poder servir desde `127.0.0.1` sin
-  certificado. **Ese overlay no forma parte del repositorio ni de la configuración de
-  producción**; los binarios de release solo aceptan HTTPS.
+- **El workflow de CI end-to-end**: la publicación de §5.7 se hizo con `gh` desde
+  esta máquina, con los mismos comandos que ejecuta el workflow, pero **el workflow
+  en sí no ha corrido nunca en Actions**. Le falta el secret
+  `PARTNERA_RELEASES_TOKEN` (ver §7); sin él, el paso de publicación fallaría.
+  Su YAML sí está validado (parsea, y los tres bloques `run` pasan `bash -n`).
+- ~~HTTPS y canal real~~ → **ya probados** en §5.7.
 
 ---
 
@@ -325,17 +358,28 @@ El auto-updater oficial está **implementado, integrado y verificado con una
 actualización real entre dos versiones distintas**, incluida la conservación de datos
 y el rechazo criptográfico de paquetes manipulados.
 
-Queda **desactivado a propósito** hasta que se complete el paso humano:
+**El canal está VIVO** (2026-07-19). Ya no es infraestructura dormida:
 
-1. Dar remoto GitHub al repositorio.
-2. Cargar el secret `PARTNERA_AFFILIATE_SIGNING_KEY` con el contenido de
-   `.secrets-tauri/affiliate-updater.key`.
-3. Etiquetar `partnera-affiliate-v0.1.1` → el workflow publica la release, firma los
-   artefactos y crea/reapunta `partnera-affiliate-channel-stable`.
-4. A partir de ahí, las instalaciones existentes se actualizan solas.
+| Pieza | Estado |
+|---|---|
+| `primebuildfit-lab/partnera` (código, **privado**) | ✅ creado, rama subida |
+| `primebuildfit-lab/partnera-releases` (canal, **público**) | ✅ creado |
+| Secret `PARTNERA_AFFILIATE_SIGNING_KEY` | ✅ cargado en el repo de código |
+| Release `partnera-affiliate-v0.1.2` + canal rodante | ✅ publicados |
+| Actualización real por HTTPS desde GitHub | ✅ verificada (§5.7) |
 
-Mientras tanto los centinelas `REPLACE_OWNER`/`REPLACE_REPO` mantienen el updater en
-estado "no configurado", que se reporta honestamente en vez de fingir que funciona.
+**Falta un paso humano, uno solo:** crear el secret **`PARTNERA_RELEASES_TOKEN`**
+(PAT con scope `repo` sobre `partnera-releases`) en
+`primebuildfit-lab/partnera` → Settings → Secrets → Actions. El `GITHUB_TOKEN`
+integrado solo alcanza al repo donde corre el workflow y no puede publicar en el
+repo de releases, así que **sin ese secret el workflow falla en el paso de
+publicación**. Deliberadamente no reutilicé el token OAuth de `gh` de esta máquina:
+es de cuenta completa y de larga vida, y no corresponde dejarlo fijado como secret
+de repositorio.
+
+Hecho eso, el ciclo queda automático: etiquetar `partnera-affiliate-v<version>`
+publica, firma y reapunta el canal, y las instalaciones existentes se actualizan
+solas.
 
 > ⚠️ **Copia de seguridad de la clave privada.** `.secrets-tauri/affiliate-updater.key`
 > existe **solo en esta máquina** y está gitignored. Si se pierde, ninguna instalación
