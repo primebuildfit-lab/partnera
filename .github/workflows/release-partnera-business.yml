@@ -1,27 +1,35 @@
 # Partnera Business (desktop) — build, sign and publish an auto-updatable release.
 #
-# PREPARED INFRASTRUCTURE: dormant until this repo has a GitHub remote and the
-# signing secret below is set. It builds the apps/business-desktop Tauri thin
-# client, signs the updater artifacts with the private key held ONLY in repo
-# secrets, and publishes a GitHub Release with the installer, its `.sig` and the
-# `business-latest.json` manifest the installed app polls.
+# Mirrors release-partnera-affiliate.yml. It builds apps/business-desktop, signs
+# the updater artifacts with the private key held ONLY in repo secrets, publishes
+# a GitHub Release with the installer + `.sig` into the SEPARATE PUBLIC releases
+# repo, and then repoints the rolling channel manifest at it.
 #
-# Trigger: push a tag like `partnera-business-v0.1.1` (or run manually).
+# Trigger: push a tag like `partnera-business-v0.1.3` (or run manually).
 #
-# Required repository secret (Settings → Secrets and variables → Actions):
-#   TAURI_SIGNING_PRIVATE_KEY   full contents of .secrets-tauri/business-updater.key
-# The password secret is NOT needed (this key has no password).
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   PARTNERA_BUSINESS_SIGNING_KEY   full contents of .secrets-tauri/business-updater.key
+#                                   (no password secret needed — this key has none)
+#   PARTNERA_RELEASES_TOKEN         PAT with `repo` scope on RELEASES_REPO below.
+#                                   The built-in GITHUB_TOKEN is scoped to THIS
+#                                   repository only and cannot publish into the
+#                                   separate public releases repo.
+#
+# ⚠️ PARTNERA_BUSINESS_SIGNING_KEY does not exist yet. Releases 0.1.1 and 0.1.2
+# were signed and published locally, so this workflow has never run. Until that
+# secret is added by a human, publish releases manually (see the app README).
 #
 # The public key in apps/business-desktop/src-tauri/tauri.conf.json
 # (plugins.updater.pubkey, key id 20B16525C8AD120B) MUST match that private key,
 # or installed apps reject every update. This key belongs to Partnera Business
 # ONLY — never reuse another product's key or manifest.
 #
-# Channel model (same as release-partnera-affiliate.yml): installed apps poll the
-# FIXED tag `partnera-business-channel-stable`, which carries only this product's
-# `business-latest.json` and is repointed on every release. `releases/latest` is
-# deliberately NOT used — it resolves to the newest release of the whole repo, so
-# two products sharing a releases repo would shadow each other's manifest.
+# CHANNEL DESIGN: several Partnera products publish into the same releases repo,
+# so `releases/latest` is unusable — it resolves to the newest release of the
+# WHOLE repo, letting one product shadow another's manifest. Installed apps poll
+# the fixed tag below, which carries only `business-latest.json` and is repointed
+# by the last step. The download URLs inside it point at immutable per-version
+# release assets.
 
 name: release-partnera-business
 
@@ -32,11 +40,21 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag/version to release (e.g. partnera-business-v0.1.1)"
+        description: "Tag/version to release (e.g. partnera-business-v0.1.3)"
         required: true
 
 permissions:
   contents: write
+
+env:
+  CHANNEL_TAG: partnera-business-channel-stable
+  # The PUBLIC releases repository. This source repo is private, and GitHub only
+  # serves a private repo's release assets to authenticated callers — the updater
+  # downloads with no credentials, so the channel must live in a public repo.
+  # It holds signed installers and manifests only; no source code.
+  RELEASES_REPO: primebuildfit-lab/partnera-releases
+  RELEASES_OWNER: primebuildfit-lab
+  RELEASES_NAME: partnera-releases
 
 jobs:
   build:
@@ -66,49 +84,88 @@ jobs:
           workspaces: apps/business-desktop/src-tauri
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
-      - name: Build, sign and publish desktop release
-        id: tauri
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Baked into the binary so the installed app polls THIS repo's releases.
-          PARTNERA_UPDATE_OWNER: ${{ github.repository_owner }}
-          PARTNERA_UPDATE_REPO: ${{ github.event.repository.name }}
-        with:
-          projectPath: apps/business-desktop
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-          releaseName: "Partnera Business __VERSION__"
-          releaseBody: |
-            Partnera Business desktop __VERSION__ (cliente ligero).
-
-            Instalación nueva: descarga y ejecuta el instalador `.exe`.
-            Actualización: las instalaciones existentes detectan esta versión al
-            abrir la app (se descarga, se verifica la firma, se instala y se
-            reinicia). También desde el menú «Partnera → Buscar actualizaciones…».
-          releaseDraft: false
-          prerelease: false
-          includeUpdaterJson: true
-          updaterJsonPreferNsis: true
-
-      # tauri-action names the manifest `latest.json` and attaches it to the
-      # version release. Repoint the fixed channel tag at it under the
-      # product-scoped name the installed apps actually poll.
-      - name: Repoint channel tag (business-latest.json)
+      # A version mismatch ships an installer that can never satisfy the manifest,
+      # so fail loudly here rather than publish a broken release.
+      - name: Verify version sync
         shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-          CHANNEL_TAG: partnera-business-channel-stable
         run: |
           set -euo pipefail
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json --output business-latest.json --clobber
-          if ! gh release view "$CHANNEL_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$CHANNEL_TAG" --repo "$GITHUB_REPOSITORY" \
+          TAG="${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}"
+          WANT="${TAG#partnera-business-v}"
+          CONF=$(node -p "require('./apps/business-desktop/src-tauri/tauri.conf.json').version")
+          CARGO=$(grep -m1 '^version' apps/business-desktop/src-tauri/Cargo.toml | cut -d'"' -f2)
+          PKG=$(node -p "require('./apps/business-desktop/package.json').version")
+          echo "tag=$WANT tauri.conf=$CONF Cargo=$CARGO package.json=$PKG"
+          if [ "$CONF" != "$WANT" ] || [ "$CARGO" != "$WANT" ] || [ "$PKG" != "$WANT" ]; then
+            echo "::error::Version mismatch — bump tauri.conf.json, Cargo.toml and package.json to $WANT before tagging."
+            exit 1
+          fi
+
+      # Build and sign only — publishing happens below, into the separate public
+      # releases repo, which tauri-action cannot target.
+      - name: Build and sign the desktop app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.PARTNERA_BUSINESS_SIGNING_KEY }}
+          # Baked into the binary so the installed app polls the PUBLIC channel.
+          PARTNERA_UPDATE_OWNER: ${{ env.RELEASES_OWNER }}
+          PARTNERA_UPDATE_REPO: ${{ env.RELEASES_NAME }}
+        with:
+          projectPath: apps/business-desktop
+
+      - name: Publish the release and repoint the rolling channel
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PARTNERA_RELEASES_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}"
+          VERSION="${TAG#partnera-business-v}"
+          BUNDLE="apps/business-desktop/src-tauri/target/release/bundle/nsis"
+
+          EXE=$(ls "$BUNDLE"/*_x64-setup.exe)
+          SIG=$(ls "$BUNDLE"/*_x64-setup.exe.sig)
+          # GitHub rewrites spaces in asset names; do it ourselves so the URL we
+          # bake into the manifest matches the asset that actually gets stored.
+          ASSET=$(basename "$EXE" | tr ' ' '.')
+          cp "$EXE" "$ASSET"
+          export VERSION SIG TAG ASSET RELEASES_REPO
+
+          # The versioned release holds the immutable installer.
+          gh release create "$TAG" "$ASSET" "$SIG" \
+            --repo "$RELEASES_REPO" \
+            --title "Partnera Business $VERSION" \
+            --notes "Partnera Business desktop $VERSION (cliente ligero).
+
+          Instalación nueva: descarga y ejecuta el instalador \`.exe\`.
+          Actualización: las instalaciones existentes se actualizan solas al abrir
+          la app (se descarga, se verifica la firma, se instala y se reinicia).
+          También desde el menú **Partnera → Buscar actualizaciones…**."
+
+          # The manifest points at that immutable asset.
+          node -e "
+            const fs = require('fs');
+            const m = {
+              version: process.env.VERSION,
+              notes: 'Partnera Business ' + process.env.VERSION,
+              pub_date: new Date().toISOString(),
+              platforms: {
+                'windows-x86_64': {
+                  signature: fs.readFileSync(process.env.SIG, 'utf8').trim(),
+                  url: 'https://github.com/' + process.env.RELEASES_REPO +
+                       '/releases/download/' + process.env.TAG + '/' + process.env.ASSET,
+                },
+              },
+            };
+            fs.writeFileSync('business-latest.json', JSON.stringify(m, null, 2) + '\n');
+          "
+
+          # Repoint the rolling channel every installed app polls.
+          if ! gh release view "$CHANNEL_TAG" --repo "$RELEASES_REPO" >/dev/null 2>&1; then
+            gh release create "$CHANNEL_TAG" --repo "$RELEASES_REPO" \
               --title "Partnera Business — canal estable" \
               --notes "Manifiesto que consultan las instalaciones de Partnera Business. Se reapunta en cada publicacion; no contiene instaladores."
           fi
-          gh release upload "$CHANNEL_TAG" business-latest.json --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$CHANNEL_TAG" business-latest.json --repo "$RELEASES_REPO" --clobber

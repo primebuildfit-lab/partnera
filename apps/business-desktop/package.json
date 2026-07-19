@@ -1,6 +1,6 @@
 {
   "name": "@partnera/business-desktop",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Partnera Business — Windows desktop thin client (Tauri 2). Loads the company/tenant Business consoles (/business) from the central Partnera API over HTTPS. No bundled runtime and no local database: the central API is the single source of truth (packages/web on Railway -> shared Postgres). Business tenants only; contains no platform-operator tooling.",
