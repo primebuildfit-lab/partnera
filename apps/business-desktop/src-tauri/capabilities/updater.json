@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "updater-window",
+  "description": "Capability for the local `updater` window only (updater.html, tauri:// scheme). It needs core IPC to invoke the update commands and to listen for `updater://status` progress events. Deliberately scoped to this window so the remote Business console loaded in `main` never gains these permissions, and no updater-plugin permission is exposed to web content — the check/download/install flow is driven from Rust.",
+  "windows": ["updater"],
+  "permissions": ["core:default"]
+}

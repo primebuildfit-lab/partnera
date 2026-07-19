@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Partnera Business",
+  "version": "0.1.2",
+  "identifier": "com.partnera.business",
+  "build": {
+    "beforeDevCommand": "pnpm prepare:build-info",
+    "beforeBuildCommand": "pnpm prepare:build-info",
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null,
+      "capabilities": ["default", "updater-window"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "publisher": "Partnera",
+    "category": "Business",
+    "shortDescription": "Partnera Business — company consoles (thin client)",
+    "longDescription": "Windows desktop thin client for the Partnera Business consoles. It loads the tenant-scoped Business surface (/business) from the central Partnera API over HTTPS — no bundled runtime and no local database. The central API is the single source of truth. Business tenants only; it contains no platform-operator tooling and no cross-tenant administration.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": ["resources/*"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIwQjE2NTI1QzhBRDEyMEIKUldRTEVxM0lKV1d4SU5rbXdKS0VrbVMvWWdCNUZsVklqU09xYlFtZUFFL1NpWGN3eW1vVmRQejkK",
+      "endpoints": [
+        "https://github.com/REPLACE_OWNER/REPLACE_REPO/releases/download/partnera-business-channel-stable/business-latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

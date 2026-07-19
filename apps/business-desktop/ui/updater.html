@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Actualizaciones — Partnera Business</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1016;
+        --panel: #171826;
+        --border: #2a2c42;
+        --text: #e8e9f0;
+        --muted: #9a9cb8;
+        --accent: #7c5cff;
+        --ok: #6ee7a8;
+        --danger: #ffb4c0;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        background: var(--bg); color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        display: flex; flex-direction: column;
+        padding: 22px; gap: 16px;
+        -webkit-user-select: none; user-select: none;
+      }
+      .brand { display: flex; align-items: center; gap: 10px; }
+      .mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), #38bdf8); }
+      h1 { margin: 0; font-size: 15px; font-weight: 650; }
+      .versions { color: var(--muted); font-size: 12px; }
+      .card {
+        flex: 1; background: var(--panel); border: 1px solid var(--border);
+        border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+      }
+      #headline { font-size: 14px; font-weight: 600; margin: 0; }
+      #headline.ok { color: var(--ok); }
+      #headline.bad { color: var(--danger); }
+      #detail { color: var(--muted); font-size: 12.5px; line-height: 1.55; margin: 0; word-break: break-word; }
+      #notes {
+        display: none; white-space: pre-wrap; font-size: 12px; color: var(--muted);
+        background: #10111b; border: 1px solid var(--border); border-radius: 8px;
+        padding: 10px; max-height: 96px; overflow: auto; -webkit-user-select: text; user-select: text;
+      }
+      #notes.show { display: block; }
+      .progress { display: none; }
+      .progress.show { display: block; }
+      .bar { height: 7px; background: #10111b; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+      .fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #38bdf8); transition: width 0.15s linear; }
+      .bar.indeterminate .fill { width: 35%; animation: slide 1.1s ease-in-out infinite; }
+      @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+      .bytes { color: var(--muted); font-size: 11px; margin-top: 6px; }
+      .btns { display: flex; gap: 10px; }
+      button {
+        flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+        background: #1b2130; color: var(--text); font-size: 13px; cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+      button:hover:not(:disabled) { filter: brightness(1.12); }
+      button:disabled { opacity: 0.45; cursor: default; }
+      button[hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <span class="mark"></span>
+      <div>
+        <h1>Actualizaciones</h1>
+        <div class="versions">Partnera Business · versión instalada <span id="current">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p id="headline">Buscando actualizaciones…</p>
+      <p id="detail">Comprobando si hay una versión más reciente disponible.</p>
+      <pre id="notes"></pre>
+
+      <div class="progress" id="progress">
+        <div class="bar" id="bar"><div class="fill" id="fill"></div></div>
+        <div class="bytes" id="bytes"></div>
+      </div>
+
+      <div style="flex: 1"></div>
+
+      <div class="btns">
+        <button class="primary" id="install" hidden>Instalar y reiniciar</button>
+        <button id="check">Buscar de nuevo</button>
+        <button id="close">Cerrar</button>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      function mb(n) {
+        if (typeof n !== "number" || !isFinite(n)) return null;
+        return (n / 1024 / 1024).toFixed(1) + " MB";
+      }
+
+      function render(s) {
+        const phase = s.phase || "checking";
+        if (s.current) $("current").textContent = s.current;
+
+        const headline = $("headline");
+        headline.className = "";
+        const titles = {
+          checking: "Buscando actualizaciones…",
+          available: "Nueva versión disponible",
+          uptodate: "La aplicación está actualizada",
+          downloading: "Descargando actualización…",
+          installing: "Instalando…",
+          disabled: "Actualizaciones no configuradas",
+          error: "No se pudo actualizar",
+        };
+        headline.textContent = titles[phase] || "Actualizaciones";
+        if (phase === "uptodate") headline.classList.add("ok");
+        if (phase === "error") headline.classList.add("bad");
+
+        $("detail").textContent = s.message || "";
+
+        const notes = $("notes");
+        if (phase === "available" && s.notes) {
+          notes.textContent = s.notes;
+          notes.classList.add("show");
+        } else {
+          notes.classList.remove("show");
+        }
+
+        const downloading = phase === "downloading" || phase === "installing";
+        $("progress").classList.toggle("show", downloading);
+        if (downloading) {
+          const bar = $("bar");
+          if (typeof s.percent === "number") {
+            bar.classList.remove("indeterminate");
+            $("fill").style.width = s.percent.toFixed(1) + "%";
+            const total = mb(s.total);
+            $("bytes").textContent = total
+              ? `${mb(s.downloaded)} de ${total} (${s.percent.toFixed(0)} %)`
+              : `${mb(s.downloaded)} descargados`;
+          } else {
+            // No Content-Length from the server: show motion, not a fake number.
+            bar.classList.add("indeterminate");
+            $("bytes").textContent = `${mb(s.downloaded) || "0.0 MB"} descargados`;
+          }
+        }
+
+        const busy = phase === "checking" || downloading;
+        $("install").hidden = phase !== "available";
+        $("check").disabled = busy;
+        $("install").disabled = busy;
+        $("close").disabled = phase === "installing";
+      }
+
+      function fatal(reason) {
+        // Never leave the window sitting on "Buscando actualizaciones…" forever:
+        // a broken bridge is a real failure and must say so.
+        const h = $("headline");
+        h.className = "bad";
+        h.textContent = "No se pudo abrir el actualizador";
+        $("detail").textContent =
+          "La ventana de actualizaciones no pudo comunicarse con la aplicación (" +
+          reason +
+          "). Cierra esta ventana e inténtalo de nuevo; si persiste, revisa el registro.";
+        $("check").disabled = true;
+        $("install").hidden = true;
+      }
+
+      async function wire() {
+        const tauri = window.__TAURI__;
+        if (!tauri || !tauri.event || !tauri.core) return fatal("puente IPC no disponible");
+        const { listen } = tauri.event;
+        const { invoke } = tauri.core;
+
+        let sawEvent = false;
+        await listen("updater://status", (e) => {
+          sawEvent = true;
+          render(e.payload || {});
+        });
+
+        try {
+          $("current").textContent = await invoke("updater_current_version");
+        } catch {}
+
+        // The check may have finished before this listener existed; replay the
+        // last status, but never clobber a live event that already arrived.
+        try {
+          const last = await invoke("updater_last_status");
+          if (last && !sawEvent) render(last);
+        } catch {}
+
+        $("check").addEventListener("click", () => invoke("updater_check").catch(() => {}));
+        $("install").addEventListener("click", () => invoke("updater_install").catch(() => {}));
+        $("close").addEventListener("click", () => invoke("updater_close").catch(() => {}));
+      }
+      wire().catch((e) => fatal(String(e && e.message ? e.message : e)));
+    </script>
+  </body>
+</html>

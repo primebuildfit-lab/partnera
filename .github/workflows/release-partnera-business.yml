@@ -1,0 +1,114 @@
+# Partnera Business (desktop) — build, sign and publish an auto-updatable release.
+#
+# PREPARED INFRASTRUCTURE: dormant until this repo has a GitHub remote and the
+# signing secret below is set. It builds the apps/business-desktop Tauri thin
+# client, signs the updater artifacts with the private key held ONLY in repo
+# secrets, and publishes a GitHub Release with the installer, its `.sig` and the
+# `business-latest.json` manifest the installed app polls.
+#
+# Trigger: push a tag like `partnera-business-v0.1.1` (or run manually).
+#
+# Required repository secret (Settings → Secrets and variables → Actions):
+#   TAURI_SIGNING_PRIVATE_KEY   full contents of .secrets-tauri/business-updater.key
+# The password secret is NOT needed (this key has no password).
+#
+# The public key in apps/business-desktop/src-tauri/tauri.conf.json
+# (plugins.updater.pubkey, key id 20B16525C8AD120B) MUST match that private key,
+# or installed apps reject every update. This key belongs to Partnera Business
+# ONLY — never reuse another product's key or manifest.
+#
+# Channel model (same as release-partnera-affiliate.yml): installed apps poll the
+# FIXED tag `partnera-business-channel-stable`, which carries only this product's
+# `business-latest.json` and is repointed on every release. `releases/latest` is
+# deliberately NOT used — it resolves to the newest release of the whole repo, so
+# two products sharing a releases repo would shadow each other's manifest.
+
+name: release-partnera-business
+
+on:
+  push:
+    tags:
+      - "partnera-business-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag/version to release (e.g. partnera-business-v0.1.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/business-desktop/src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build, sign and publish desktop release
+        id: tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Baked into the binary so the installed app polls THIS repo's releases.
+          PARTNERA_UPDATE_OWNER: ${{ github.repository_owner }}
+          PARTNERA_UPDATE_REPO: ${{ github.event.repository.name }}
+        with:
+          projectPath: apps/business-desktop
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          releaseName: "Partnera Business __VERSION__"
+          releaseBody: |
+            Partnera Business desktop __VERSION__ (cliente ligero).
+
+            Instalación nueva: descarga y ejecuta el instalador `.exe`.
+            Actualización: las instalaciones existentes detectan esta versión al
+            abrir la app (se descarga, se verifica la firma, se instala y se
+            reinicia). También desde el menú «Partnera → Buscar actualizaciones…».
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
+
+      # tauri-action names the manifest `latest.json` and attaches it to the
+      # version release. Repoint the fixed channel tag at it under the
+      # product-scoped name the installed apps actually poll.
+      - name: Repoint channel tag (business-latest.json)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          CHANNEL_TAG: partnera-business-channel-stable
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json --output business-latest.json --clobber
+          if ! gh release view "$CHANNEL_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$CHANNEL_TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "Partnera Business — canal estable" \
+              --notes "Manifiesto que consultan las instalaciones de Partnera Business. Se reapunta en cada publicacion; no contiene instaladores."
+          fi
+          gh release upload "$CHANNEL_TAG" business-latest.json --repo "$GITHUB_REPOSITORY" --clobber
