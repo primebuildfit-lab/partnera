@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capability set for the Partnera Creator desktop thin client. Deny-by-default: the loaded web content (the Creator Portal served by the central API over HTTPS) uses NO Tauri IPC. Navigation control, external-link opening, deep-link routing and updates are all handled in Rust, so no filesystem, shell, http, process, opener, deep-link or updater permission is exposed to web content. Only core window defaults are granted.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

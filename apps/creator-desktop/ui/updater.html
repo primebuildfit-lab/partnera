@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Partnera Creator — Actualizaciones</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1016;
+        --panel: #171826;
+        --border: #2a2c42;
+        --text: #e8e9f0;
+        --muted: #9a9cb8;
+        --accent: #22c58b;
+        --accent2: #7c5cff;
+        --danger: #ffb4c0;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        background: var(--bg); color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        display: flex; align-items: center; justify-content: center;
+        -webkit-user-select: none; user-select: none;
+      }
+      main { width: 100%; max-width: 460px; padding: 28px; }
+      .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+      .mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); flex: none; }
+      h1 { margin: 0; font-size: 16px; font-weight: 650; }
+      .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+      .icon { font-size: 26px; line-height: 1; margin-bottom: 10px; }
+      .title { font-size: 15px; font-weight: 650; margin: 0 0 6px; }
+      .title.ok { color: var(--accent); }
+      .title.bad { color: var(--danger); }
+      .msg { color: var(--muted); font-size: 13px; margin: 0; line-height: 1.55; word-break: break-word; }
+      .ver { font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
+      .notes {
+        margin: 12px 0 0; padding: 10px 12px; background: #12131f; border: 1px solid var(--border);
+        border-radius: 8px; color: var(--muted); font-size: 12px; line-height: 1.5;
+        max-height: 108px; overflow-y: auto; white-space: pre-wrap; user-select: text;
+      }
+      .bar { margin-top: 14px; height: 7px; border-radius: 99px; background: #12131f; border: 1px solid var(--border); overflow: hidden; }
+      .bar > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.18s ease; }
+      .bar.indet > i { width: 35% !important; animation: slide 1.1s ease-in-out infinite; }
+      @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(320%); } }
+      .bytes { margin-top: 7px; font-size: 11px; color: #5b6270; font-variant-numeric: tabular-nums; }
+      .spinner {
+        width: 26px; height: 26px; margin-bottom: 12px;
+        border: 3px solid var(--border); border-top-color: var(--accent);
+        border-radius: 50%; animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .btns { display: flex; gap: 10px; margin-top: 18px; }
+      button {
+        flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+        background: #1b2130; color: var(--text); font-size: 13px; cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #05231a; font-weight: 700; }
+      button:hover:not(:disabled) { filter: brightness(1.1); }
+      button:disabled { opacity: 0.5; cursor: default; }
+      [hidden] { display: none !important; }
+      .foot { color: #5b6270; font-size: 11px; margin-top: 16px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><span class="mark"></span><h1>Partnera Creator</h1></div>
+
+      <div class="card">
+        <div class="spinner" id="spinner" hidden></div>
+        <div class="icon" id="icon" hidden></div>
+        <p class="title" id="title">Actualizaciones</p>
+        <p class="msg" id="msg"></p>
+
+        <div class="notes" id="notes" hidden></div>
+
+        <div class="bar" id="bar" hidden><i id="fill"></i></div>
+        <div class="bytes" id="bytes" hidden></div>
+
+        <div class="btns">
+          <button class="primary" id="primary" hidden></button>
+          <button id="secondary" hidden></button>
+        </div>
+      </div>
+
+      <div class="foot">El actualizador solo renueva la app de escritorio; el portal siempre es la versión en vivo.</div>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let current = "";
+
+      /**
+       * Destructive actions ignore clicks for this long after the button appears.
+       * Installing replaces the executable and restarts the app, and this window
+       * can pop up on its own after a startup check — so a click the user had
+       * already aimed somewhere else must not land on it. Same reasoning as the
+       * activation delay browsers put on permission prompts.
+       */
+      const ARM_DELAY_MS = 1500;
+
+      /**
+       * Escape before interpolating into innerHTML. `version`, `date` and error
+       * text originate in the remote update manifest and are read BEFORE the
+       * signature is verified, so they are untrusted input in this privileged
+       * (IPC-capable) window.
+       */
+      function esc(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => (
+          { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+        ));
+      }
+
+      function fmtBytes(n) {
+        if (!Number.isFinite(n)) return "";
+        const u = ["B", "KB", "MB", "GB"];
+        let i = 0;
+        while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+        return `${n.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
+      }
+
+      /** Paint one state. Everything is hidden by default and opted back in. */
+      function render(v) {
+        for (const id of ["spinner", "icon", "notes", "bar", "bytes", "primary", "secondary"]) {
+          $(id).hidden = true;
+        }
+        $("title").className = "title";
+        $("primary").disabled = false;
+        $("secondary").disabled = false;
+
+        if (v.spinner) $("spinner").hidden = false;
+        if (v.icon) { $("icon").textContent = v.icon; $("icon").hidden = false; }
+        $("title").textContent = v.title;
+        if (v.tone) $("title").classList.add(v.tone);
+        $("msg").innerHTML = v.msg || "";
+
+        if (v.notes) { $("notes").textContent = v.notes; $("notes").hidden = false; }
+
+        if (v.progress) {
+          $("bar").hidden = false;
+          $("bar").classList.toggle("indet", v.progress.pct == null);
+          $("fill").style.width = v.progress.pct == null ? "" : `${v.progress.pct}%`;
+          if (v.progress.label) { $("bytes").textContent = v.progress.label; $("bytes").hidden = false; }
+        }
+
+        bindButton("primary", v.primary);
+        bindButton("secondary", v.secondary);
+      }
+
+      /**
+       * Wire one action button.
+       *
+       * Only a *trusted* click (a real user gesture) may run the action. The
+       * install action is destructive — it replaces the executable and restarts
+       * the app — so it must never be reachable by a synthetic click, a focus
+       * side effect, or a stray key event delivered to a freshly focused window.
+       */
+      function bindButton(id, spec) {
+        const el = $(id);
+        el.onclick = null;
+        if (!spec) return;
+        el.hidden = false;
+        el.textContent = spec.label;
+        el.disabled = !!spec.disabled;
+        const armedAt = Date.now();
+        el.onclick = (ev) => {
+          // Only a real user gesture, and never one that arrives in the moment
+          // the button appears (see ARM_DELAY_MS).
+          if (!ev || ev.isTrusted !== true) return;
+          if (spec.guard && Date.now() - armedAt < ARM_DELAY_MS) return;
+          spec.onClick?.();
+        };
+      }
+
+      const invoke = (cmd) => window.__TAURI__?.core?.invoke(cmd) ?? Promise.reject(new Error("sin IPC"));
+
+      const checkAgain = {
+        label: "Buscar de nuevo",
+        onClick: () => invoke("updater_check").catch(() => {}),
+      };
+      const closeBtn = {
+        label: "Cerrar",
+        onClick: () => window.__TAURI__?.window?.getCurrentWindow().close(),
+      };
+
+      const VIEWS = {
+        "not-configured": (p) => ({
+          icon: "⚙️",
+          title: "Actualizaciones no configuradas",
+          msg: `Esta compilación no tiene un canal de publicación asignado, por lo que no puede buscar
+                actualizaciones. Versión instalada: <span class="ver">${esc(p.current)}</span>.`,
+          secondary: closeBtn,
+        }),
+        checking: (p) => ({
+          spinner: true,
+          title: "Buscando actualizaciones…",
+          msg: `Comprobando si existe una versión más reciente. Versión instalada:
+                <span class="ver">${esc(p.current)}</span>.`,
+        }),
+        "up-to-date": (p) => ({
+          icon: "✅",
+          tone: "ok",
+          title: "La aplicación está actualizada",
+          msg: `Estás usando la última versión disponible: <span class="ver">${esc(p.current)}</span>.`,
+          primary: checkAgain,
+          secondary: closeBtn,
+        }),
+        available: (p) => ({
+          icon: "⬆️",
+          title: "Hay una nueva versión disponible",
+          msg: `Puedes actualizar de <span class="ver">${esc(p.current)}</span> a
+                <span class="ver">${esc(p.version)}</span>${p.date ? ` · publicada el ${esc(String(p.date).slice(0, 10))}` : ""}.
+                La actualización se verifica con firma digital antes de instalarse.`,
+          notes: p.notes || "",
+          primary: {
+            label: "Instalar y reiniciar",
+            guard: true,
+            onClick: () => {
+              render({ spinner: true, title: "Preparando…", msg: "Iniciando la descarga." });
+              invoke("updater_install").catch(() => {});
+            },
+          },
+          secondary: { label: "Ahora no", onClick: closeBtn.onClick },
+        }),
+        downloading: (p) => ({
+          title: "Descargando actualización…",
+          msg: `Descargando la versión <span class="ver">${esc(p.version)}</span>.`,
+          progress: {
+            pct: p.pct ?? null,
+            label: p.total
+              ? `${fmtBytes(p.downloaded)} de ${fmtBytes(p.total)}${p.pct != null ? ` · ${p.pct}%` : ""}`
+              : fmtBytes(p.downloaded),
+          },
+        }),
+        verifying: (p) => ({
+          spinner: true,
+          title: "Verificando firma…",
+          msg: `Comprobando la firma digital de la versión <span class="ver">${esc(p.version)}</span>
+                antes de instalarla.`,
+        }),
+        installing: (p) => ({
+          spinner: true,
+          title: "Instalando…",
+          msg: `Instalando la versión <span class="ver">${esc(p.version)}</span>. No cierres la aplicación.`,
+        }),
+        restarting: (p) => ({
+          spinner: true,
+          title: "Reiniciando…",
+          msg: `La aplicación se cerrará y volverá a abrirse en la versión
+                <span class="ver">${esc(p.version)}</span>. Tus datos locales se conservan.`,
+        }),
+        failed: (p) => ({
+          icon: "⚠️",
+          tone: "bad",
+          title: "No se pudo actualizar",
+          msg: `${esc(p.message || "Ocurrió un error inesperado.")}<br />La aplicación instalada no se ha
+                modificado y puede seguir usándose con normalidad.`,
+          primary: checkAgain,
+          secondary: closeBtn,
+        }),
+      };
+
+      function apply(p) {
+        const view = VIEWS[p.phase];
+        if (!view) return;
+        if (p.current) current = p.current;
+        render(view({ current, ...p }));
+      }
+
+      async function wire() {
+        const tauri = window.__TAURI__;
+        if (!tauri?.event || !tauri?.core) {
+          render({ icon: "⚠️", tone: "bad", title: "Sin conexión con la aplicación", msg: "No se pudo inicializar el actualizador." });
+          return;
+        }
+        await tauri.event.listen("updater://state", (e) => apply(e.payload || {}));
+
+        // Paint something correct before the first event lands. The startup
+        // check runs before this window exists, so replay its last phase.
+        try {
+          const info = await tauri.core.invoke("updater_bootstrap");
+          current = info.current;
+          if (info.last) apply({ current, ...info.last });
+          else if (!info.configured) apply({ phase: "not-configured", current });
+          else apply({ phase: "checking", current });
+        } catch {
+          render({ icon: "⚠️", tone: "bad", title: "Sin conexión con la aplicación", msg: "No se pudo inicializar el actualizador." });
+        }
+      }
+      wire();
+    </script>
+  </body>
+</html>

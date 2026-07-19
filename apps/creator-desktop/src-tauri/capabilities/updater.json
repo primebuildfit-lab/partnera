@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "updater-window",
+  "description": "Capability for the small LOCAL updater window (label `updater`), which is bundled with the app rather than served by the central API. It needs core event + window defaults so it can receive `updater://state` progress events and close itself. It is deliberately NOT granted `updater:default`: the update check, download, signature verification and install are all driven from Rust, and the three `updater_*` commands additionally reject any caller whose window label is not `updater` — so the remote Creator Portal in the `main` window can never trigger an install.",
+  "windows": ["updater"],
+  "permissions": ["core:default"]
+}

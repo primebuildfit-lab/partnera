@@ -1,0 +1,16 @@
+{
+  "name": "@partnera/creator-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Partnera Creator — Windows desktop thin client (Tauri 2). A creator-only desktop app that loads the Creator Portal (/creator) from the central Partnera API over HTTPS. No bundled runtime and no local database: the central API is the single source of truth (packages/web on Railway → shared Postgres). Separate product from Partnera Operations, Business, Affiliate and Internal OS.",
+  "scripts": {
+    "prepare:build-info": "node ./scripts/gen-build-info.mjs",
+    "desktop:dev": "pnpm prepare:build-info && tauri dev",
+    "desktop:build": "pnpm prepare:build-info && tauri build",
+    "release:manifest": "node ./scripts/make-release-manifest.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0"
+  }
+}

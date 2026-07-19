@@ -1,0 +1,39 @@
+[package]
+name = "partnera-creator-desktop"
+version = "0.1.1"
+description = "Partnera Creator — Windows desktop thin client (creator portal)"
+authors = ["Partnera"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "partnera_creator_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# `tray-icon`: the tray menu is the manual "Buscar actualizaciones…" entry point
+# (the main window is full-bleed remote content, so it has no app chrome).
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-window-state = "2"
+tauri-plugin-opener = "2"
+# Automatic updates: checks a signed manifest, downloads and installs the new
+# signed shell package natively. Driven from Rust (see src/updater.rs).
+tauri-plugin-updater = "2"
+# Secure deep links (partnera-creator://). Handled entirely in Rust with a strict
+# allowlist (only /creator paths on the configured API host); see src/lib.rs.
+tauri-plugin-deep-link = "2"
+# Single running instance: a second launch (or an OS deep-link dispatch on
+# Windows) is forwarded to the running window instead of opening a new one.
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

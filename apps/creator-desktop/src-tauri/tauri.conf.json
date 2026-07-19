@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Partnera Creator",
+  "version": "0.1.1",
+  "identifier": "com.partnera.creator",
+  "build": {
+    "beforeDevCommand": "pnpm prepare:build-info",
+    "beforeBuildCommand": "pnpm prepare:build-info",
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null,
+      "capabilities": [
+        "default",
+        "updater-window"
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "createUpdaterArtifacts": true,
+    "publisher": "Partnera",
+    "category": "Business",
+    "shortDescription": "Partnera Creator — creator portal (thin client)",
+    "longDescription": "Windows desktop thin client for creators. It loads the Creator Portal (/creator) from the central Partnera API over HTTPS — no bundled runtime and no local database. The central API is the single source of truth. A separate product from Partnera Operations, Business, Affiliate and Internal OS; creators only.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "resources/*"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "partnera-creator"
+        ]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZCODY1MjREQUIzMzBGOEIKUldTTER6T3JUVktHYXhOUElBM0tHZGRqWG96WFEvYlRnU0hlS1dFVWlJcXJVTTd3OU5FRWY3MVUK",
+      "endpoints": [],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
