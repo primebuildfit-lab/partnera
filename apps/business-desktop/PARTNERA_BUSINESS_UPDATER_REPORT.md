@@ -228,6 +228,39 @@ reinicio y confirmación posterior. **El canal está vivo.**
 
 ---
 
+## 3-ter. Instalación sin interacción y publicación en un comando
+
+Hasta 0.1.4 el updater **detectaba** solo pero **esperaba un clic** en «Instalar y
+reiniciar». Eso no cumplía el objetivo real: que cada versión publicada llegue
+sola. Dos cambios:
+
+- **`autoinstall_enabled()`** (0.1.5+): una actualización verificada se instala y
+  relanza sin preguntar. Activado por defecto — es un cliente ligero, no hay
+  trabajo local que perder. `PARTNERA_UPDATE_AUTOINSTALL=0` vuelve a preguntar.
+- **`scripts/release.mjs`** (`pnpm ... release`): sincroniza las tres versiones,
+  compila firmando, publica la release y reapunta el canal. **Firma en local, así
+  que no necesita ningún secreto de GitHub Actions.**
+
+### Prueba válida (0.1.5 → 0.1.6, sin tocar nada)
+
+```
+{"msg":"updater.available version=0.1.6"}
+{"msg":"updater.autoinstall"}         <- 1 ms despues, sin clic
+{"msg":"updater.download start version=0.1.6"}
+{"msg":"app.start"}                   <- relanzada
+{"msg":"updater.uptodate"}
+```
+
+Ciclo completo en 5,3 s.
+
+> **Advertencia sobre las pruebas anteriores.** Los saltos 0.1.1→0.1.2,
+> 0.1.2→0.1.3 y 0.1.4→0.1.5 **no** demuestran el auto-install: esos binarios son
+> anteriores a la función, y esas instalaciones las disparó un clic humano en la
+> ventana. Sí demuestran detección, descarga, verificación de firma, instalación y
+> reinicio. Sólo la prueba de arriba es concluyente para el modo sin interacción.
+
+---
+
 ## 4. Estado final
 
 `apps/business-desktop` se actualiza solo mediante el sistema oficial de Tauri, y
