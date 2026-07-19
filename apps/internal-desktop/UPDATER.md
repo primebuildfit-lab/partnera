@@ -12,6 +12,7 @@ working install is left untouched.
 | Situation | What the operator sees |
 |---|---|
 | Startup, nothing new | Nothing. Silent; logged as `updater.up_to_date`. |
+| Still open 6h later | Silent re-check. Only surfaces if something new appeared. |
 | Startup, update available | Updates window: version, notes, **Instalar ahora** / **Más tarde**. |
 | Manual check (tray) | Window opens immediately and reports every outcome, including "La aplicación está actualizada". |
 | Downloading | Real percentage + MB when the server sends `content-length`; animated bar and byte count when it does not. |
@@ -21,6 +22,11 @@ working install is left untouched.
 **Installing is never automatic.** This app supervises a local runtime an
 operator may be mid-task in, so the update is downloaded and installed only
 after an explicit click. The *check* is automatic; the *install* is consented.
+
+**Checks repeat every 6 hours** while the app stays open — this console is
+routinely left running for days, so a startup-only check would mean a machine
+that is never restarted never learns about an update. Override with
+`PARTNERA_UPDATE_INTERVAL_SECS` (`0` disables periodic checking).
 
 ## Architecture
 - **Rust-driven** (`src-tauri/src/updater.rs`). The whole check → download →

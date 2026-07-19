@@ -1,6 +1,6 @@
 {
   "name": "@partnera/internal-desktop",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "type": "module",
   "description": "Partnera Internal OS — Windows desktop wrapper (Tauri 2). Packaging only; the private admin panel (packages/web /internal) runs inside a bundled local Node runtime (resources/server.cjs).",

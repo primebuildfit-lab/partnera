@@ -489,6 +489,9 @@ pub fn run() {
             // channel is configured, and never gates the runtime boot below.
             // Silent unless a signed update actually exists.
             updater::spawn_startup_check(handle.clone());
+            // …and keep checking while the console stays open, since it is
+            // routinely left running for days.
+            updater::spawn_periodic_check(handle.clone());
 
             boot(handle);
             Ok(())

@@ -359,6 +359,49 @@ pub fn spawn_startup_check(app: AppHandle) {
     });
 }
 
+/// How often the app re-checks while it stays open. This is a supervision
+/// console an operator can leave running for days, so a startup-only check
+/// would mean a machine that is never restarted never sees an update.
+/// `PARTNERA_UPDATE_INTERVAL_SECS` overrides it (used by the tests and for
+/// controlled verification); 0 disables periodic checking entirely.
+const DEFAULT_INTERVAL_SECS: u64 = 6 * 60 * 60;
+
+fn interval_secs() -> u64 {
+    match std::env::var("PARTNERA_UPDATE_INTERVAL_SECS") {
+        Ok(raw) => raw.trim().parse().unwrap_or(DEFAULT_INTERVAL_SECS),
+        Err(_) => DEFAULT_INTERVAL_SECS,
+    }
+}
+
+/// Re-check on a timer for the lifetime of the process. Silent when there is
+/// nothing to do; opens the window only when a real update appears, so a
+/// long-running console never nags but never goes stale either. Never installs
+/// on its own — that still needs the operator's click.
+pub fn spawn_periodic_check(app: AppHandle) {
+    let secs = interval_secs();
+    if secs == 0 {
+        log(&app, "updater.periodic disabled");
+        return;
+    }
+    log(&app, &format!("updater.periodic every={secs}s"));
+    // A plain thread rather than an async task: sleeping for hours inside the
+    // shared async runtime would tie up one of its worker threads, and this
+    // crate does not depend on tokio directly for a timer.
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(secs));
+        // Skip this tick if a check or install is already running rather than
+        // queueing up behind it.
+        if !acquire(&app) {
+            continue;
+        }
+        let found = tauri::async_runtime::block_on(check(&app));
+        release(&app);
+        if found {
+            open_window(&app);
+        }
+    });
+}
+
 /// Manual check from the tray. Always opens the window first, so every outcome
 /// — including "ya está actualizada" and errors — is visible.
 pub fn spawn_manual_check(app: AppHandle) {
@@ -437,6 +480,26 @@ mod tests {
         assert!(resolve_endpoint().is_none(), "blank override must be ignored");
 
         std::env::remove_var("PARTNERA_UPDATE_ENDPOINT");
+    }
+
+    /// Also env-driven, so it shares the serial-execution constraint above.
+    #[test]
+    fn periodic_interval_resolution() {
+        std::env::remove_var("PARTNERA_UPDATE_INTERVAL_SECS");
+        assert_eq!(interval_secs(), DEFAULT_INTERVAL_SECS);
+
+        std::env::set_var("PARTNERA_UPDATE_INTERVAL_SECS", " 90 ");
+        assert_eq!(interval_secs(), 90, "override should win and be trimmed");
+
+        // 0 is meaningful (disable), not a parse failure.
+        std::env::set_var("PARTNERA_UPDATE_INTERVAL_SECS", "0");
+        assert_eq!(interval_secs(), 0);
+
+        // Garbage must not disable checking or panic — fall back to the default.
+        std::env::set_var("PARTNERA_UPDATE_INTERVAL_SECS", "nonsense");
+        assert_eq!(interval_secs(), DEFAULT_INTERVAL_SECS);
+
+        std::env::remove_var("PARTNERA_UPDATE_INTERVAL_SECS");
     }
 
     #[test]

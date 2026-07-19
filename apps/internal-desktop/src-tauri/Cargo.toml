@@ -1,6 +1,6 @@
 [package]
 name = "partnera-internal-desktop"
-version = "0.2.2"
+version = "0.2.3"
 description = "Partnera Internal OS — private Windows desktop wrapper"
 authors = ["Partnera"]
 edition = "2021"
