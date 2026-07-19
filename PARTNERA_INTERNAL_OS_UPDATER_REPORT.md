@@ -208,6 +208,31 @@ huérfanos.
 
 C1 y C3 **solo aparecen en un checkout limpio**: en local funcionaban por artefactos residuales.
 
+### Segunda publicación (0.2.3) — el pipeline es repetible
+
+`partnera-internal-v0.2.3` se publicó **automáticamente y a la primera**, sin ningún arreglo
+(run `29686680060`). Trae comprobación periódica cada 6 h: esta consola se deja abierta días
+enteros, así que comprobar solo al arrancar significaba que un equipo que nunca se reinicia
+nunca se enteraba de una versión nueva. Configurable con `PARTNERA_UPDATE_INTERVAL_SECS`
+(`0` la desactiva).
+
+**La actualización 0.2.2 → 0.2.3 se hizo por la ruta de CONSENTIMIENTO**, sin
+`PARTNERA_UPDATE_UNATTENDED`: apareció la ventana, un humano pulsó "Instalar ahora" y el
+ciclo se completó. Es la mejor verificación posible de la interfaz — no la comprobó un script,
+la usó una persona.
+
+```
+updater.available version=0.2.3 current=0.2.2
+updater.download_start version=0.2.3        ← 6 s despues: el clic del operador
+updater.download_done verifying_signature
+updater.stopping_runtime_before_install
+app.start                                    ← relanzada sola
+updater.periodic every=21600s                ← comprobacion periodica activa
+updater.up_to_date version=0.2.3
+```
+
+Sin procesos huérfanos. Canal público sirviendo 0.2.3.
+
 ## 5b. Resultado final
 
 El updater oficial de Tauri está **completo, publicado y verificado de extremo a extremo**:
@@ -247,7 +272,7 @@ Detectados de paso; **no se tocó ninguna otra aplicación**.
 2. **Canales estable/beta**: `latest.json` + `beta.json` con selección en la UI.
 3. **Recordatorio diferido**: "Más tarde" hoy solo cierra; podría reofrecer a las N horas.
 4. **Reanudar descargas** interrumpidas (hoy se reinicia desde cero).
-5. **Comprobación periódica** además de al arranque, para sesiones de días.
+5. ~~Comprobación periódica además de al arranque~~ — **HECHO en 0.2.3** (cada 6 h).
 6. **Firmar el instalador con certificado Authenticode** — evitaría el aviso SmartScreen de
    Windows. Es independiente de la firma minisign del updater.
 7. **Rollback real**: hoy la protección es que una firma inválida no instala nada (probado).
