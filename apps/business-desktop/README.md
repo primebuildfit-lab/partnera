@@ -28,7 +28,7 @@ the Affiliate- or Creator-only portals.
 | productName  | `Partnera Business`      |
 | identifier   | `com.partnera.business`  |
 | package name | `@partnera/business-desktop` (app id `partnera-business`) |
-| version      | `0.1.3`                  |
+| version      | `0.1.6`                  |
 
 The identifier is distinct from Partnera Operations (`com.partnera.operations`),
 so the two install and update independently.
@@ -69,9 +69,10 @@ native shell is updated — the console UI refreshes instantly from the API.
 
 ### What the user sees
 
-- **At launch** — a silent, non-blocking check. It surfaces itself *only* when
-  there is something to install: the "Actualizaciones" window opens showing the
-  new version, its release notes, and an **Instalar y reiniciar** button.
+- **At launch** — a silent, non-blocking check. When a newer signed version
+  exists it is downloaded, verified and installed **with no interaction**, and the
+  app relaunches into it. The "Actualizaciones" window shows progress while this
+  happens. Set `PARTNERA_UPDATE_AUTOINSTALL=0` to be asked first instead.
 - **On demand** — menu **Partnera → Buscar actualizaciones…**. Reports *both*
   outcomes explicitly: a new version, or "la aplicación ya está actualizada".
   The `Ctrl+U` accelerator does **not** work — the webview swallows the key
@@ -121,7 +122,20 @@ partnera-business-vX.Y.Z           installer + .sig       (immutable)
 the *whole repo*, so two products sharing this repo would shadow each other's
 manifest. Same convention as Partnera Affiliate.
 
-To publish a new version: bump the version, build with
+**Publish a new version with one command:**
+
+```
+pnpm --filter @partnera/business-desktop release          # 0.1.6 -> 0.1.7
+pnpm --filter @partnera/business-desktop release minor    # 0.1.6 -> 0.2.0
+pnpm --filter @partnera/business-desktop release 1.0.0    # explicit
+```
+
+`scripts/release.mjs` syncs the three version files, builds and signs, publishes
+the versioned release and repoints the channel. Signing happens locally, so this
+needs **no GitHub Actions secret**. Every installed copy updates itself on its
+next launch.
+
+Manual equivalent: bump the version, build with
 `TAURI_SIGNING_PRIVATE_KEY` + `PARTNERA_UPDATE_OWNER=primebuildfit-lab` +
 `PARTNERA_UPDATE_REPO=partnera-releases`, create the `partnera-business-vX.Y.Z`
 release with the installer and `.sig`, then upload the regenerated

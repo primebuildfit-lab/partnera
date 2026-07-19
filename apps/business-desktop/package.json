@@ -1,13 +1,14 @@
 {
   "name": "@partnera/business-desktop",
-  "version": "0.1.3",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "description": "Partnera Business — Windows desktop thin client (Tauri 2). Loads the company/tenant Business consoles (/business) from the central Partnera API over HTTPS. No bundled runtime and no local database: the central API is the single source of truth (packages/web on Railway -> shared Postgres). Business tenants only; contains no platform-operator tooling.",
   "scripts": {
     "prepare:build-info": "node ./scripts/gen-build-info.mjs",
     "desktop:dev": "pnpm prepare:build-info && tauri dev",
-    "desktop:build": "pnpm prepare:build-info && tauri build"
+    "desktop:build": "pnpm prepare:build-info && tauri build",
+    "release": "node ./scripts/release.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0"

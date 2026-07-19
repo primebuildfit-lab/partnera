@@ -138,6 +138,19 @@ pub(crate) fn show_window(app: &AppHandle) {
     }
 }
 
+/// Whether a verified update installs on its own, with no click.
+///
+/// Defaults to **on**: this is a thin client, so an update only replaces the
+/// native shell and the console reloads from the central API — there is no local
+/// work to lose. Set `PARTNERA_UPDATE_AUTOINSTALL=0` to go back to asking first
+/// (the update window then waits on "Instalar y reiniciar").
+fn autoinstall_enabled() -> bool {
+    match std::env::var("PARTNERA_UPDATE_AUTOINSTALL") {
+        Ok(v) => !matches!(v.trim(), "0" | "false" | "no"),
+        Err(_) => true,
+    }
+}
+
 /// Run a check. `manual` opens the update window and reports *both* outcomes
 /// (new version / already up to date); the silent startup check only surfaces
 /// itself when there is something to install.
@@ -152,24 +165,32 @@ async fn check(app: AppHandle, manual: bool) {
         *busy = true;
     }
     let result = run_check(&app, manual).await;
+    // Release the lock BEFORE installing: `install` takes it too.
     *app.state::<UpdaterState>().busy.lock().unwrap() = false;
 
-    if let Err(e) = result {
-        log(&app, &format!("updater.check_failed {e}"));
-        if manual {
-            emit(
-                &app,
-                status(
+    match result {
+        Ok(true) if autoinstall_enabled() => {
+            log(&app, "updater.autoinstall");
+            install(app).await;
+        }
+        Ok(_) => {}
+        Err(e) => {
+            log(&app, &format!("updater.check_failed {e}"));
+            if manual {
+                emit(
                     &app,
-                    "error",
-                    &format!("No se pudo comprobar si hay actualizaciones. Detalle: {e}"),
-                ),
-            );
+                    status(
+                        &app,
+                        "error",
+                        &format!("No se pudo comprobar si hay actualizaciones. Detalle: {e}"),
+                    ),
+                );
+            }
         }
     }
 }
 
-async fn run_check(app: &AppHandle, manual: bool) -> Result<(), String> {
+async fn run_check(app: &AppHandle, manual: bool) -> Result<bool, String> {
     let endpoint = match resolve_endpoint() {
         Some(e) => e,
         None => {
@@ -185,7 +206,7 @@ async fn run_check(app: &AppHandle, manual: bool) -> Result<(), String> {
                     ),
                 );
             }
-            return Ok(());
+            return Ok(false);
         }
     };
 
@@ -220,10 +241,10 @@ async fn run_check(app: &AppHandle, manual: bool) -> Result<(), String> {
                 },
             );
             *app.state::<UpdaterState>().pending.lock().unwrap() = Some(update);
-            // An available update is always worth surfacing, even on the silent
-            // startup check — the user decides whether to install it.
+            // Surface the window either way: with autoinstall on it is the
+            // progress indicator, without it it is the prompt.
             show_window(app);
-            Ok(())
+            Ok(true)
         }
         Ok(None) => {
             log(app, "updater.uptodate");
@@ -237,7 +258,7 @@ async fn run_check(app: &AppHandle, manual: bool) -> Result<(), String> {
                     ),
                 );
             }
-            Ok(())
+            Ok(false)
         }
         Err(e) => Err(format!("check {e}")),
     }
