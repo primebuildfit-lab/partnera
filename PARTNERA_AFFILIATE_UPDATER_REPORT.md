@@ -292,19 +292,53 @@ las reservas de HTTPS y "canal real" que figuraban aquí.
 > bajarían. El repo público contiene únicamente instaladores firmados y
 > manifiestos.
 
-### 5.8 Qué NO se probó
+### 5.8 Publicación automática por GitHub Actions (ciclo completo)
+
+Tag `partnera-affiliate-v0.1.3` → el workflow compiló, firmó, publicó el release
+y reapuntó el canal **sin intervención manual**
+([run 29668012086](https://github.com/primebuildfit-lab/partnera/actions/runs/29668012086), `success`).
+
+Después, la instalación **0.1.2 se actualizó sola a la 0.1.3 publicada por CI**,
+sin ninguna variable de entorno (canal horneado en el binario):
+
+```
+{"msg":"updater.available version=0.1.3"}
+{"msg":"updater.verified version=0.1.3 bytes=1828052"}
+{"msg":"updater.installing version=0.1.3"}
+{"msg":"app.start"}              ← relanzada por el instalador
+{"msg":"updater.up_to_date"}
+```
+
+`DisplayVersion` y `FileVersion`: `0.1.2` → **`0.1.3`**; `marcador-ci.txt` intacto.
+
+**Tres fallos reales encontrados y corregidos en el camino** (el workflow no
+funcionó a la primera):
+
+1. `pnpm install --frozen-lockfile` falló: el lockfile no tenía entrada para
+   `apps/affiliate-desktop` (la app nunca había estado versionada).
+2. Volvió a fallar por un **drift preexistente**: el lockfile commiteado declara
+   `pg`/`@types/pg` para `packages/web`, que no están en su `package.json`
+   (commit `252273d`). Con esa inconsistencia `--frozen-lockfile` no puede pasar;
+   reconciliarla toca trabajo ajeno en curso, así que el workflow usa
+   `--no-frozen-lockfile` con la razón documentada en el propio archivo.
+3. `Missing script: "tauri"` — `tauri-action` invoca `npm run tauri` en
+   `projectPath` y el `package.json` de la app no definía ese script.
+
+### 5.9 Qué NO se probó
 
 - **Clic humano en "Reiniciar e instalar" y en Ayuda → Buscar actualizaciones…**: el
   manejador de menú y los comandos están cableados y la ventana se abre y renderiza
   (§5.5), pero la instalación se ejercitó por la vía `PARTNERA_UPDATE_AUTOINSTALL`,
   que llama exactamente al mismo comando `updater_install`. La ruta del clic en sí no
   se simuló.
-- **El workflow de CI end-to-end**: la publicación de §5.7 se hizo con `gh` desde
-  esta máquina, con los mismos comandos que ejecuta el workflow, pero **el workflow
-  en sí no ha corrido nunca en Actions**. Le falta el secret
-  `PARTNERA_RELEASES_TOKEN` (ver §7); sin él, el paso de publicación fallaría.
-  Su YAML sí está validado (parsea, y los tres bloques `run` pasan `bash -n`).
-- ~~HTTPS y canal real~~ → **ya probados** en §5.7.
+- ~~HTTPS y canal real~~ → **probados** en §5.7.
+- ~~El workflow de CI end-to-end~~ → **probado** en §5.8 (run en verde + la app se
+  actualizó sola a la versión que publicó CI).
+- **Clic humano** en "Reiniciar e instalar" y en *Ayuda → Buscar actualizaciones…*:
+  sigue sin simularse. La ventana se abre y renderiza (§5.5) y la instalación se
+  ejercitó vía `PARTNERA_UPDATE_AUTOINSTALL`, que invoca exactamente el mismo
+  comando `updater_install`; lo no probado es la ruta del clic en sí.
+- **Rotación del token de publicación**: ver el aviso de §7.
 
 ---
 
@@ -368,18 +402,18 @@ y el rechazo criptográfico de paquetes manipulados.
 | Release `partnera-affiliate-v0.1.2` + canal rodante | ✅ publicados |
 | Actualización real por HTTPS desde GitHub | ✅ verificada (§5.7) |
 
-**Falta un paso humano, uno solo:** crear el secret **`PARTNERA_RELEASES_TOKEN`**
-(PAT con scope `repo` sobre `partnera-releases`) en
-`primebuildfit-lab/partnera` → Settings → Secrets → Actions. El `GITHUB_TOKEN`
-integrado solo alcanza al repo donde corre el workflow y no puede publicar en el
-repo de releases, así que **sin ese secret el workflow falla en el paso de
-publicación**. Deliberadamente no reutilicé el token OAuth de `gh` de esta máquina:
-es de cuenta completa y de larga vida, y no corresponde dejarlo fijado como secret
-de repositorio.
+**El ciclo automático está cerrado y probado** (§5.8): etiquetar
+`partnera-affiliate-v<version>` compila, firma, publica y reapunta el canal, y las
+instalaciones existentes se actualizan solas.
 
-Hecho eso, el ciclo queda automático: etiquetar `partnera-affiliate-v<version>`
-publica, firma y reapunta el canal, y las instalaciones existentes se actualizan
-solas.
+> ⚠️ **Rotar el token de publicación.** `PARTNERA_RELEASES_TOKEN` contiene hoy el
+> **token OAuth de `gh` de la máquina local**, porque GitHub no permite crear un PAT
+> por API ni por CLI — solo por navegador — y era la única forma de dejar el pipeline
+> corriendo sin bloquearse. Tiene dos inconvenientes: **alcanza a todos los repos de
+> la cuenta**, y **se invalida** si se rehace `gh auth login` o se revoca la sesión.
+> Sustituirlo por un **fine-grained PAT** limitado a `partnera-releases` con
+> `Contents: Read and write` (Settings → Developer settings → Personal access tokens)
+> y actualizar el secret.
 
 > ⚠️ **Copia de seguridad de la clave privada.** `.secrets-tauri/affiliate-updater.key`
 > existe **solo en esta máquina** y está gitignored. Si se pierde, ninguna instalación
