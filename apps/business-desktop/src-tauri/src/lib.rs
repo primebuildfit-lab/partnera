@@ -234,15 +234,19 @@ pub fn run() {
                 )?],
             )?;
 
-            let menu_handle = handle.clone();
+            // Register the handler on the APP, not on the window builder. The
+            // builder's `on_menu_event` never fires for a menu attached this way
+            // (verified: clicking the item produced no event at all), so the
+            // manual check was unreachable.
+            handle.on_menu_event(move |app, event| match event.id().as_ref() {
+                "updater:check" => updater::updater_check(app.clone()),
+                "app:logs" => open_logs_dir(app.clone()),
+                _ => {}
+            });
+
             let nav_handle = handle.clone();
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .menu(menu)
-                .on_menu_event(move |_win, event| match event.id().as_ref() {
-                    "updater:check" => updater::updater_check(menu_handle.clone()),
-                    "app:logs" => open_logs_dir(menu_handle.clone()),
-                    _ => {}
-                })
                 .title("Partnera Business")
                 .inner_size(1540.0, 960.0)
                 .min_inner_size(1180.0, 720.0)

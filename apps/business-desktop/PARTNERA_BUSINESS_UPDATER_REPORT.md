@@ -153,12 +153,15 @@ la carga anterior.
 
 ### Lo que NO pude verificar
 
-- **El acelerador `Ctrl+U` y el clic en el menú.** El entorno tenía una ventana
-  siempre-encima que no pude apartar, así que no logré dar foco real a la
-  aplicación para capturarlo. La ruta de código es la misma que ya se verificó
-  desde los botones (`updater_check`), pero **el acelerador en sí queda pendiente
-  de confirmación manual**. Prueba: abrir la app, pulsar `Ctrl+U`, y comprobar que
-  aparece la ventana de actualizaciones.
+- **El menú de comprobación manual.** Con foco real en la app comprobé que
+  `Ctrl+U` **no funciona**: el webview se traga la tecla antes de llegar al menú
+  nativo. Al hacer clic en el propio elemento del menú tampoco pasaba nada — el
+  manejador estaba registrado en el *builder de la ventana*, donde nunca se
+  dispara. Corregido en 0.1.3 registrándolo en la aplicación
+  (`AppHandle::on_menu_event`). **La corrección no está verificada**: al intentar
+  probarla, el escritorio estaba en uso y mis clics acabaron en otras ventanas.
+  Falta una comprobación manual: abrir la app y pulsar **Partnera → Buscar
+  actualizaciones…**. El acelerador `Ctrl+U` seguirá sin funcionar (documentado).
 - **Los textos exactos de la UI** en cada estado se comprobaron por código y por
   los eventos emitidos, no por captura de pantalla de los cinco estados.
 
@@ -192,7 +195,8 @@ contiene binarios firmados; **ningún código fuente**.
 |---|---|
 | `partnera-business-v0.1.1` | instalador + `.sig` |
 | `partnera-business-v0.1.2` | instalador + `.sig` |
-| `partnera-business-channel-stable` | `business-latest.json` (apunta a 0.1.2) |
+| `partnera-business-v0.1.3` | instalador + `.sig` |
+| `partnera-business-channel-stable` | `business-latest.json` (apunta a 0.1.3) |
 
 Endpoint que consultan las instalaciones:
 `https://github.com/primebuildfit-lab/partnera-releases/releases/download/partnera-business-channel-stable/business-latest.json` → **HTTP 200 sin autenticar**.

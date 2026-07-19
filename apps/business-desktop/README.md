@@ -28,7 +28,7 @@ the Affiliate- or Creator-only portals.
 | productName  | `Partnera Business`      |
 | identifier   | `com.partnera.business`  |
 | package name | `@partnera/business-desktop` (app id `partnera-business`) |
-| version      | `0.1.2`                  |
+| version      | `0.1.3`                  |
 
 The identifier is distinct from Partnera Operations (`com.partnera.operations`),
 so the two install and update independently.
@@ -72,9 +72,10 @@ native shell is updated — the console UI refreshes instantly from the API.
 - **At launch** — a silent, non-blocking check. It surfaces itself *only* when
   there is something to install: the "Actualizaciones" window opens showing the
   new version, its release notes, and an **Instalar y reiniciar** button.
-- **On demand** — menu **Partnera → Buscar actualizaciones…** (`Ctrl+U`). This
-  reports *both* outcomes explicitly: a new version, or "la aplicación ya está
-  actualizada".
+- **On demand** — menu **Partnera → Buscar actualizaciones…**. Reports *both*
+  outcomes explicitly: a new version, or "la aplicación ya está actualizada".
+  The `Ctrl+U` accelerator does **not** work — the webview swallows the key
+  before it reaches the native menu; use the menu itself.
 - **While downloading** — a real progress bar with downloaded/total MB and a
   percentage (indeterminate if the server sends no `Content-Length`).
 - **On failure** — a plain-language Spanish error stating that the current
@@ -101,8 +102,9 @@ installed apps will reject the update.
 
 ### Release channel
 
-Status: **live.** Verified with a real 0.1.1 → 0.1.2 update downloaded from
-GitHub over HTTPS.
+Status: **live.** Verified repeatedly, including a clean install of the published
+0.1.1 downloaded from GitHub that then auto-updated itself to 0.1.2, and a
+0.1.2 → 0.1.3 update.
 
 Host: **`primebuildfit-lab/partnera-releases`** (public — the updater downloads
 unauthenticated, so a private repo cannot serve these assets). It holds signed
@@ -126,7 +128,7 @@ release with the installer and `.sig`, then upload the regenerated
 `business-latest.json` to `partnera-business-channel-stable` with `--clobber`.
 
 The `release-partnera-business` workflow automates this, but needs the repo
-secret `TAURI_SIGNING_PRIVATE_KEY` first — releases so far were **signed
+secret `PARTNERA_BUSINESS_SIGNING_KEY` first — releases so far were **signed
 locally**, so that secret does not exist yet.
 
 For a controlled local end-to-end test, set `PARTNERA_UPDATE_ENDPOINT` to a
