@@ -24,6 +24,8 @@ use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::json;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 
@@ -53,7 +55,7 @@ struct Runtime {
 // Small helpers (std-only; no network crate pulled in)
 // ---------------------------------------------------------------------------
 
-fn now_millis() -> u128 {
+pub(crate) fn now_millis() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis())
@@ -219,6 +221,25 @@ fn spawn_runtime(
     cmd.spawn().map_err(|e| e.to_string())
 }
 
+/// Stop the bundled Node runtime, if one is running.
+///
+/// Called on normal exit AND from the updater's `on_before_exit` hook: the NSIS
+/// installer terminates this process with `std::process::exit(0)`, so
+/// `RunEvent::Exit` never fires during an update. Without this the runtime is
+/// orphaned on every update — the stray `node.exe` keeps `resources/node.exe`
+/// open, which blocks the installer from replacing it and from relaunching.
+pub(crate) fn stop_runtime(app: &AppHandle) {
+    if let Some(state) = app.try_state::<Runtime>() {
+        if let Ok(mut guard) = state.child.lock() {
+            if let Some(mut child) = guard.take() {
+                let _ = child.kill();
+                // Reap it, so the handle is released before the installer runs.
+                let _ = child.wait();
+            }
+        }
+    }
+}
+
 fn emit_status(app: &AppHandle, status: &str, step: &str, state: &str) {
     let _ = app.emit("boot://status", json!({ "status": status, "step": step, "state": state }));
 }
@@ -359,6 +380,46 @@ fn open_logs_dir(app: AppHandle) {
 }
 
 // ---------------------------------------------------------------------------
+// Tray
+// ---------------------------------------------------------------------------
+
+/// The tray is the operator's entry point for a MANUAL update check. It cannot
+/// live in the app UI: after boot the main window shows the admin panel served
+/// on loopback, which deliberately has no Tauri IPC, so it can never invoke an
+/// updater command. The tray runs on the trusted native side instead.
+fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+    let check = MenuItem::with_id(app, "check-updates", "Buscar actualizaciones…", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "show-window", "Mostrar Internal OS", true, None::<&str>)?;
+    let logs = MenuItem::with_id(app, "open-logs", "Abrir registro", true, None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(app)?;
+    let quit = MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&check, &show, &logs, &sep, &quit])?;
+
+    TrayIconBuilder::with_id("main-tray")
+        .icon(app.default_window_icon().cloned().ok_or_else(|| {
+            tauri::Error::AssetNotFound("default window icon".into())
+        })?)
+        .tooltip("Partnera Internal OS")
+        .menu(&menu)
+        .show_menu_on_left_click(true)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "check-updates" => updater::spawn_manual_check(app.clone()),
+            "show-window" => {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.show();
+                    let _ = win.unminimize();
+                    let _ = win.set_focus();
+                }
+            }
+            "open-logs" => open_logs_dir(app.clone()),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .build(app)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Entry
 // ---------------------------------------------------------------------------
 
@@ -369,7 +430,15 @@ pub fn run() {
         // Automatic updates (checks a signed release manifest in the background).
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Runtime::default())
-        .invoke_handler(tauri::generate_handler![retry_boot, open_logs_dir])
+        .manage(updater::UpdaterState::default())
+        .invoke_handler(tauri::generate_handler![
+            retry_boot,
+            open_logs_dir,
+            updater::updater_sync,
+            updater::updater_check,
+            updater::updater_install,
+            updater::updater_close,
+        ])
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -410,8 +479,15 @@ pub fn run() {
                 })
                 .build()?;
 
+            // Tray: the only entry point for a manual update check (the loopback
+            // admin panel has no IPC). A tray failure must never block startup.
+            if let Err(e) = build_tray(&handle) {
+                log(&handle, &format!("tray.failed {e}"));
+            }
+
             // Non-blocking automatic update check; no-ops until the release
             // channel is configured, and never gates the runtime boot below.
+            // Silent unless a signed update actually exists.
             updater::spawn_startup_check(handle.clone());
 
             boot(handle);
@@ -421,13 +497,7 @@ pub fn run() {
         .expect("error while building Partnera Internal OS")
         .run(|app_handle, event| {
             if let RunEvent::Exit = event {
-                if let Some(state) = app_handle.try_state::<Runtime>() {
-                    if let Ok(mut guard) = state.child.lock() {
-                        if let Some(mut child) = guard.take() {
-                            let _ = child.kill();
-                        }
-                    }
-                }
+                stop_runtime(app_handle);
             }
         });
 }

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Actualizaciones — Partnera Internal OS</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0d12;
+        --panel: #141822;
+        --border: #232838;
+        --text: #e6e8ee;
+        --muted: #9aa2b4;
+        --accent: #6366f1;
+        --ok: #46c08a;
+        --danger: #ffb4c0;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        display: flex;
+        flex-direction: column;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      main { flex: 1; padding: 26px 28px 0; }
+      .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+      .mark { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); flex: none; }
+      .brand h1 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: .2px; }
+
+      h2 { margin: 0 0 8px; font-size: 17px; font-weight: 650; }
+      p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+      .version { color: var(--text); font-variant-numeric: tabular-nums; }
+
+      .row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+      .spinner {
+        width: 20px; height: 20px; flex: none;
+        border: 2.5px solid var(--border); border-top-color: var(--accent);
+        border-radius: 50%; animation: spin .9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .badge { width: 20px; height: 20px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+      .badge.ok { background: rgba(70,192,138,.15); color: var(--ok); }
+      .badge.err { background: rgba(255,180,192,.12); color: var(--danger); }
+      .badge.new { background: rgba(99,102,241,.18); color: #a5a7ff; }
+
+      .notes {
+        margin-top: 14px; max-height: 96px; overflow-y: auto;
+        background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+        padding: 12px 14px; font-size: 12.5px; color: var(--muted);
+        white-space: pre-wrap; line-height: 1.5; -webkit-user-select: text; user-select: text;
+      }
+
+      .bar {
+        margin-top: 16px; height: 7px; border-radius: 999px;
+        background: var(--border); overflow: hidden;
+      }
+      .bar > i {
+        display: block; height: 100%; width: 0%;
+        background: var(--accent); border-radius: 999px;
+        transition: width .18s ease-out;
+      }
+      .bar.indeterminate > i {
+        width: 35%; animation: slide 1.1s ease-in-out infinite;
+      }
+      @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+      .meter { margin-top: 7px; font-size: 11.5px; color: #5b6270; font-variant-numeric: tabular-nums; }
+
+      details { margin-top: 12px; }
+      summary { font-size: 11.5px; color: #5b6270; cursor: pointer; }
+      details pre {
+        margin: 8px 0 0; padding: 10px 12px; font-size: 11px; line-height: 1.5;
+        background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+        color: var(--muted); white-space: pre-wrap; word-break: break-word;
+        max-height: 90px; overflow-y: auto; -webkit-user-select: text; user-select: text;
+      }
+
+      footer {
+        display: flex; gap: 10px; justify-content: flex-end;
+        padding: 20px 28px 22px;
+      }
+      button {
+        padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+        background: #1b2130; color: var(--text); font-size: 13px; cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+      button:hover:not(:disabled) { filter: brightness(1.12); }
+      button:disabled { opacity: .45; cursor: default; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><span class="mark"></span><h1>Partnera Internal OS</h1></div>
+
+      <div class="row">
+        <span class="spinner" id="spinner" hidden></span>
+        <span class="badge" id="badge" hidden></span>
+        <h2 id="title">Buscando actualizaciones…</h2>
+      </div>
+      <p id="detail"></p>
+
+      <div class="notes" id="notes" hidden></div>
+
+      <div class="bar" id="bar" hidden><i id="fill"></i></div>
+      <div class="meter" id="meter" hidden></div>
+
+      <details id="diag" hidden>
+        <summary>Detalles técnicos</summary>
+        <pre id="diag-text"></pre>
+      </details>
+    </main>
+
+    <footer>
+      <button id="secondary" hidden></button>
+      <button class="primary" id="primary" hidden></button>
+    </footer>
+
+    <script>
+      const el = (id) => document.getElementById(id);
+      const ui = {
+        spinner: el("spinner"), badge: el("badge"), title: el("title"), detail: el("detail"),
+        notes: el("notes"), bar: el("bar"), fill: el("fill"), meter: el("meter"),
+        diag: el("diag"), diagText: el("diag-text"),
+        primary: el("primary"), secondary: el("secondary"),
+      };
+
+      let invoke = null;
+
+      function mb(bytes) {
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      /** Reset every optional region, then let the renderer opt back in. */
+      function reset() {
+        ui.spinner.hidden = true;
+        ui.badge.hidden = true;
+        ui.badge.className = "badge";
+        ui.notes.hidden = true;
+        ui.bar.hidden = true;
+        ui.bar.classList.remove("indeterminate");
+        ui.meter.hidden = true;
+        ui.diag.hidden = true;
+        ui.primary.hidden = true;
+        ui.secondary.hidden = true;
+        ui.primary.disabled = false;
+        ui.secondary.disabled = false;
+        ui.detail.textContent = "";
+      }
+
+      function button(node, label, handler) {
+        node.hidden = false;
+        node.textContent = label;
+        node.onclick = handler;
+      }
+
+      const close = () => invoke && invoke("updater_close").catch(() => {});
+      const check = () => invoke && invoke("updater_check").catch(() => {});
+
+      function render(p) {
+        reset();
+        switch (p.phase) {
+          case "checking":
+            ui.spinner.hidden = false;
+            ui.title.textContent = "Buscando actualizaciones…";
+            ui.detail.textContent = "Consultando el canal de versiones firmado.";
+            break;
+
+          case "up_to_date":
+            ui.badge.hidden = false;
+            ui.badge.classList.add("ok");
+            ui.badge.textContent = "✓";
+            ui.title.textContent = "La aplicación está actualizada";
+            ui.detail.innerHTML =
+              'Estás usando la versión <span class="version">' + p.current + "</span>, la más reciente disponible.";
+            button(ui.primary, "Cerrar", close);
+            button(ui.secondary, "Buscar de nuevo", check);
+            break;
+
+          case "available":
+            ui.badge.hidden = false;
+            ui.badge.classList.add("new");
+            ui.badge.textContent = "↑";
+            ui.title.textContent = "Nueva versión disponible";
+            ui.detail.innerHTML =
+              'Versión <span class="version">' + p.version + "</span> · tienes la " +
+              '<span class="version">' + p.current + "</span>" + (p.date ? " · publicada " + p.date : "");
+            if (p.notes && p.notes.trim()) {
+              ui.notes.hidden = false;
+              ui.notes.textContent = p.notes.trim();
+            }
+            button(ui.primary, "Instalar ahora", () => {
+              invoke && invoke("updater_install").catch(() => {});
+            });
+            button(ui.secondary, "Más tarde", close);
+            break;
+
+          case "downloading": {
+            ui.spinner.hidden = false;
+            ui.title.textContent = "Descargando actualización…";
+            ui.detail.textContent = "No cierres la aplicación durante la descarga.";
+            ui.bar.hidden = false;
+            if (typeof p.total === "number" && p.total > 0) {
+              const pct = Math.min(100, (p.received / p.total) * 100);
+              ui.fill.style.width = pct.toFixed(1) + "%";
+              ui.meter.hidden = false;
+              ui.meter.textContent = mb(p.received) + " de " + mb(p.total) + " · " + pct.toFixed(0) + "%";
+            } else {
+              // Server sent no content-length: show motion, not a fake percentage.
+              ui.bar.classList.add("indeterminate");
+              ui.meter.hidden = false;
+              ui.meter.textContent = mb(p.received) + " descargados";
+            }
+            break;
+          }
+
+          case "installing":
+            ui.spinner.hidden = false;
+            ui.title.textContent = "Verificando firma e instalando…";
+            ui.detail.textContent =
+              "Se comprueba la firma del paquete antes de instalarlo. Si no es válida, no se instala nada.";
+            ui.bar.hidden = false;
+            ui.bar.classList.add("indeterminate");
+            break;
+
+          case "restarting":
+            ui.spinner.hidden = false;
+            ui.title.textContent = "Reiniciando la aplicación…";
+            ui.detail.textContent = "La aplicación se abrirá de nuevo en la versión nueva.";
+            break;
+
+          case "not_configured":
+            ui.badge.hidden = false;
+            ui.badge.classList.add("err");
+            ui.badge.textContent = "!";
+            ui.title.textContent = "Actualizaciones no configuradas";
+            ui.detail.innerHTML =
+              "Esta compilación no tiene un canal de versiones asignado, así que no puede buscar " +
+              'actualizaciones. Versión instalada: <span class="version">' + p.current + "</span>.";
+            button(ui.primary, "Cerrar", close);
+            break;
+
+          case "error":
+            ui.badge.hidden = false;
+            ui.badge.classList.add("err");
+            ui.badge.textContent = "!";
+            ui.title.textContent = "No se pudo actualizar";
+            ui.detail.textContent = p.message;
+            if (p.detail) {
+              ui.diag.hidden = false;
+              ui.diagText.textContent = p.detail;
+            }
+            button(ui.primary, "Reintentar", check);
+            button(ui.secondary, "Cerrar", close);
+            break;
+        }
+      }
+
+      async function wire() {
+        const tauri = window.__TAURI__;
+        if (!tauri || !tauri.event || !tauri.core) return;
+        invoke = tauri.core.invoke;
+        await tauri.event.listen("updater://state", (e) => render(e.payload || {}));
+        // Ask the backend to replay the current phase, so a window opened by the
+        // startup check renders immediately instead of waiting for the next event.
+        invoke("updater_sync").catch(() => {});
+      }
+      wire();
+    </script>
+  </body>
+</html>

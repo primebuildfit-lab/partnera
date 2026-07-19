@@ -1,24 +1,32 @@
 # Partnera Internal OS (desktop) — build, sign and publish an auto-updatable release.
 #
-# PREPARED INFRASTRUCTURE: dormant until this repo has a GitHub remote and the
-# signing secret below is set. It builds the apps/internal-desktop Tauri app,
-# signs the updater artifacts with the private key held ONLY in repo secrets,
-# and publishes a GitHub Release with the installer, its `.sig`, and `latest.json`
-# — the manifest the installed app polls. No secret ever touches the repo/config.
+# Trigger: push a tag like `partnera-internal-v0.2.2` (or run manually).
 #
-# Trigger: push a tag like `partnera-internal-v0.2.1` (or run manually).
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   PARTNERA_INTERNAL_SIGNING_KEY    full contents of ~/.partnera/updater.key
+#                                    (minisign 8ADBA54F419376D9, no password).
+#   PARTNERA_RELEASES_TOKEN          PAT with `repo` scope on RELEASES_REPO below.
+#                                    The built-in GITHUB_TOKEN is scoped to THIS
+#                                    repository only and cannot publish into the
+#                                    separate public releases repo.
 #
-# Required repository secret (Settings → Secrets and variables → Actions):
-#   TAURI_SIGNING_PRIVATE_KEY           full contents of ~/.partnera/updater.key
-# The password secret is NOT needed (this key has no password).
+# WHY A SEPARATE RELEASES REPO: this source repo is PRIVATE. The Tauri updater
+# downloads its manifest and installer UNAUTHENTICATED, so release assets have to
+# live in a public repo. That repo holds only signed installers and manifests.
 #
-# The public key in apps/internal-desktop/src-tauri/tauri.conf.json
+# KEY ISOLATION: this app has its OWN keypair (minisign 8ADBA54F419376D9). Do not
+# reuse another Partnera app's key here, and do not reuse this one elsewhere — a
+# shared key lets one product's package be accepted by another product's client.
+# The public half in apps/internal-desktop/src-tauri/tauri.conf.json
 # (plugins.updater.pubkey) MUST match this private key, or installed apps reject
 # every update.
 #
-# NOTE: if a separate "Partnera Operations" Tauri app is ever added, give it its
-# OWN key, workflow, tag prefix (partnera-operations-v*) and release channel —
-# never let two products consume the same manifest.
+# CHANNEL DESIGN: several Partnera products publish from this same repository, so
+# `releases/latest/download/...` is NOT a safe manifest URL — "latest" is whichever
+# product released most recently. Installed Internal OS clients instead poll the
+# fixed tag `partnera-internal-channel-stable`, which carries only this product's
+# `internal-latest.json` and is repointed by the last step below. The download URLs
+# inside that manifest reference the immutable per-version release assets.
 
 name: release-partnera-internal
 
@@ -29,11 +37,17 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag/version to release (e.g. partnera-internal-v0.2.1)"
+        description: "Tag/version to release (e.g. partnera-internal-v0.2.2)"
         required: true
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  CHANNEL_TAG: partnera-internal-channel-stable
+  RELEASES_REPO: primebuildfit-lab/partnera-releases
+  RELEASES_OWNER: primebuildfit-lab
+  RELEASES_NAME: partnera-releases
 
 jobs:
   build:
@@ -65,26 +79,100 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build, sign and publish desktop release
+      - name: Guard — app version must match the tag
+        shell: bash
+        run: |
+          TAG="${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}"
+          WANT="${TAG#partnera-internal-v}"
+          CONF=$(node -p "require('./apps/internal-desktop/src-tauri/tauri.conf.json').version")
+          CARGO=$(grep -m1 '^version' apps/internal-desktop/src-tauri/Cargo.toml | cut -d'"' -f2)
+          PKG=$(node -p "require('./apps/internal-desktop/package.json').version")
+          echo "tag=$WANT tauri.conf=$CONF Cargo=$CARGO package.json=$PKG"
+          if [ "$CONF" != "$WANT" ] || [ "$CARGO" != "$WANT" ] || [ "$PKG" != "$WANT" ]; then
+            echo "::error::Version mismatch — bump tauri.conf.json, Cargo.toml and package.json to $WANT before tagging."
+            exit 1
+          fi
+
+      # Build and sign only — publishing happens below, into the separate public
+      # releases repo, which tauri-action cannot target.
+      - name: Build and sign the desktop app
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Baked into the binary so the installed app polls THIS repo's releases.
-          PARTNERA_UPDATE_OWNER: ${{ github.repository_owner }}
-          PARTNERA_UPDATE_REPO: ${{ github.event.repository.name }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.PARTNERA_INTERNAL_SIGNING_KEY }}
+          # Baked into the binary so the installed app polls the PUBLIC channel.
+          PARTNERA_UPDATE_OWNER: ${{ env.RELEASES_OWNER }}
+          PARTNERA_UPDATE_REPO: ${{ env.RELEASES_NAME }}
         with:
           projectPath: apps/internal-desktop
           args: --config src-tauri/tauri.conf.release.json
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-          releaseName: "Partnera Internal OS __VERSION__"
-          releaseBody: |
-            Partnera Internal OS desktop __VERSION__.
 
-            Instalación nueva: descarga y ejecuta el instalador `.exe`.
-            Actualización: las instalaciones existentes se actualizan solas al
-            abrir la app (se descarga, verifica la firma, instala y reinicia).
-          releaseDraft: false
-          prerelease: false
-          includeUpdaterJson: true
+      - name: Publish the release and repoint the rolling channel
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PARTNERA_RELEASES_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}"
+          VERSION="${TAG#partnera-internal-v}"
+          BUNDLE="apps/internal-desktop/src-tauri/target/release/bundle/nsis"
+
+          EXE=$(ls "$BUNDLE"/*_x64-setup.exe)
+          SIG=$(ls "$BUNDLE"/*_x64-setup.exe.sig)
+          ASSET=$(basename "$EXE" | tr ' ' '-')
+          cp "$EXE" "$ASSET"
+          export VERSION SIG TAG ASSET
+
+          # The versioned release holds the immutable installer.
+          gh release create "$TAG" "$ASSET" "$SIG" \
+            --repo "$RELEASES_REPO" \
+            --title "Partnera Internal OS $VERSION" \
+            --notes "Partnera Internal OS desktop $VERSION.
+
+          Instalación nueva: descarga y ejecuta el instalador \`.exe\`.
+          Actualización: las instalaciones existentes se actualizan solas al abrir
+          la app (se descarga, se verifica la firma, se instala y se reinicia).
+          También se puede comprobar desde la bandeja del sistema →
+          **Buscar actualizaciones…**."
+
+          # The manifest points at that immutable asset.
+          node -e "
+            const fs = require('fs');
+            const m = {
+              version: process.env.VERSION,
+              notes: 'Partnera Internal OS ' + process.env.VERSION,
+              pub_date: new Date().toISOString(),
+              platforms: {
+                'windows-x86_64': {
+                  signature: fs.readFileSync(process.env.SIG, 'utf8').trim(),
+                  url: 'https://github.com/' + process.env.RELEASES_REPO +
+                       '/releases/download/' + process.env.TAG + '/' + process.env.ASSET,
+                },
+              },
+            };
+            if (!m.platforms['windows-x86_64'].signature) throw new Error('empty signature');
+            fs.writeFileSync('internal-latest.json', JSON.stringify(m, null, 2));
+            console.log('manifest ->', m.version);
+          "
+
+          # The rolling channel tag is what installed clients poll.
+          if ! gh release view "$CHANNEL_TAG" --repo "$RELEASES_REPO" >/dev/null 2>&1; then
+            gh release create "$CHANNEL_TAG" \
+              --repo "$RELEASES_REPO" \
+              --title "Partnera Internal OS — canal estable" \
+              --notes "Manifiesto que consultan las instalaciones de Partnera Internal OS. Se reapunta en cada release; no contiene instaladores." \
+              --latest=false
+          fi
+          gh release upload "$CHANNEL_TAG" internal-latest.json --clobber --repo "$RELEASES_REPO"
+
+      - name: Verify the published manifest is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://github.com/${RELEASES_REPO}/releases/download/${CHANNEL_TAG}/internal-latest.json"
+          echo "polling $URL"
+          curl -fsSL --retry 5 --retry-delay 5 "$URL" | node -e "
+            let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{
+              const m=JSON.parse(s);
+              console.log('channel serves version', m.version);
+            });
+          "
