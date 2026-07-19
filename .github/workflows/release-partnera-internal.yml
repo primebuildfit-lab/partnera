@@ -79,6 +79,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The desktop sidecar is esbuild-bundled from packages/web, which imports
+      # the @partnera/* workspace packages by their `dist/index.js`. Those are
+      # tsc build outputs and are not in git, so without this the bundle step
+      # fails with "Could not resolve @partnera/core". Locally it only works
+      # because dist/ is left over from a previous build.
+      - name: Build workspace packages
+        run: pnpm build
+
       - name: Guard — app version must match the tag
         shell: bash
         run: |
