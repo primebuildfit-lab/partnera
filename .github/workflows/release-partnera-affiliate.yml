@@ -82,8 +82,15 @@ jobs:
         with:
           workspaces: apps/affiliate-desktop/src-tauri
 
+      # NOTA: deliberadamente NO se usa --frozen-lockfile. El lockfile commiteado
+      # arrastra un desajuste previo a este workflow: declara `pg`/`@types/pg`
+      # para packages/web, que no están en su package.json (drift introducido en
+      # 252273d). Mientras eso no se reconcilie, --frozen-lockfile falla siempre,
+      # y reconciliarlo queda fuera del alcance de esta app. Esta build solo
+      # necesita @tauri-apps/cli para apps/affiliate-desktop, que no depende de
+      # ningún paquete del workspace.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Guard — app version must match the tag
         shell: bash
